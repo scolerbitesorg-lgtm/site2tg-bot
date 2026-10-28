@@ -40,6 +40,8 @@ def _env(monkeypatch, tmp_path, **extra):
     monkeypatch.delenv("WEBHOOK_MODE", raising=False)
     monkeypatch.delenv("INJECTED_COMMAND", raising=False)
     monkeypatch.delenv("ACK_MESSAGE_ID", raising=False)
+    monkeypatch.delenv("CHANNEL_ID_VIDEO", raising=False)
+    monkeypatch.delenv("CHANNEL_ID_FILES", raising=False)
     for k, v in extra.items():
         monkeypatch.setenv(k, v)
 
@@ -235,3 +237,101 @@ def test_same_file_listed_by_two_different_sites_goes_once(monkeypatch, tmp_path
     monkeypatch.setattr(m, "Bot", lambda token: bot)
     m.main()
     assert [f for _, f in bot.sent] == ["app.apk"]
+
+
+def test_videos_and_files_go_to_their_own_channels(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path, CHANNEL_ID_VIDEO="-100777", CHANNEL_ID_FILES="-100888")
+    monkeypatch.delenv("CHANNEL_ID")                       # optional when both are set
+    s = st.load()
+    s["sites"] = [{"url": "https://a.com", "adapter": "generic", "added": "x", "limit": 5}]
+    st.save(s)
+    items = [Item(id="1", url="https://a/v.mp4", filename="v.mp4", caption="", size=10, kind="video"),
+             Item(id="2", url="https://a/x.apk", filename="x.apk", caption="", size=10),
+             Item(id="3", url="https://a/c.mkv", filename="c.mkv", caption="", size=10)]
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+
+    def fake_download(it, folder):
+        p = os.path.join(folder, it.filename)
+        open(p, "wb").write(it.id.encode())
+        return p, 1
+
+    monkeypatch.setattr(m, "download", fake_download)
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    assert m.main() == 0
+    assert sorted(bot.sent) == [("-100777", "c.mkv"), ("-100777", "v.mp4"), ("-100888", "x.apk")]
+    assert st.load()["routing"] == "videos → alag video channel, baaki files → alag files channel"
+
+
+def test_only_video_channel_set_files_fall_back(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path, CHANNEL_ID_VIDEO="-100777")
+    it = Item(id="2", url="https://a/x.apk", filename="x.apk", caption="", size=10)
+    assert m.pick_channel(it, "-100123") == "-100123"
+    it2 = Item(id="1", url="https://a/v.MP4", filename="v.MP4", caption="", size=10)
+    assert m.pick_channel(it2, "-100123") == "-100777"
+
+
+def _get_env(monkeypatch, tmp_path, content=b"PK\x03\x04apk-bytes", **extra):
+    _env(monkeypatch, tmp_path, **extra)
+
+    def fake_download(it, folder):
+        p = os.path.join(folder, it.filename)
+        open(p, "wb").write(content)
+        return p, len(content)
+
+    monkeypatch.setattr(m, "download", fake_download)
+    bot = HookBot()
+    return bot
+
+
+def test_get_downloads_one_link_and_posts_it(monkeypatch, tmp_path):
+    bot = _get_env(monkeypatch, tmp_path, CHANNEL_ID_FILES="-100888")
+    s = st.load()
+    reply = m.cmd_get(bot, s, "https://cdn.site.com/apps/My%20App.apk?x=1", "-100123")
+    assert reply.startswith("✅ Bhej di: My App.apk") and "files channel" in reply
+    assert bot.sent == [("-100888", "My App.apk")]
+    assert s["files_sent_total"] == 1 and s["last_get"]["name"] == "My App.apk"
+    again = m.cmd_get(bot, s, "https://mirror.other.com/My-App.apk", "-100123")   # same bytes
+    assert "pehle se channel mein" in again and len(bot.sent) == 1
+
+
+def test_get_mp4_without_extension_is_detected_as_video(monkeypatch, tmp_path):
+    bot = _get_env(monkeypatch, tmp_path, content=b"\x00\x00\x00\x18ftypmp42rest", CHANNEL_ID_VIDEO="-100777")
+    reply = m.cmd_get(bot, st.load(), "https://cdn.site.com/download/123", "-100123")
+    assert bot.sent == [("-100777", "123.mp4")] and "video channel" in reply
+
+
+def test_get_refuses_streams_pages_and_bad_links(monkeypatch, tmp_path):
+    bot = _get_env(monkeypatch, tmp_path)
+    s = st.load()
+    assert "stream/YouTube" in m.cmd_get(bot, s, "https://x.com/live/index.m3u8", "-1")
+    assert "stream/YouTube" in m.cmd_get(bot, s, "https://www.youtube.com/watch?v=abc", "-1")
+    assert "stream/YouTube" in m.cmd_get(bot, s, "https://youtu.be/abc", "-1")
+    assert "sahi nahi" in m.cmd_get(bot, s, "ftp://x.com/a.apk", "-1")
+    assert "Aise likho" in m.cmd_get(bot, s, "", "-1")
+    assert bot.sent == []
+
+    def page(it, folder):
+        raise RuntimeError("download gave a web page, not a file")
+
+    monkeypatch.setattr(m, "download", page)
+    assert "web page" in m.cmd_get(bot, s, "https://x.com/file", "-1")
+    bot2 = _get_env(monkeypatch, tmp_path, content=b"#EXTM3U\n#EXT-X-VERSION:3")
+    assert "m3u8" in m.cmd_get(bot2, st.load(), "https://x.com/playlist", "-1")
+    assert bot2.sent == []
+
+
+def test_get_big_file_without_userbot_is_explained(monkeypatch, tmp_path):
+    bot = _get_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(m, "BOT_UPLOAD_LIMIT", 5)
+    monkeypatch.setattr(m.userbot, "available", lambda: False)
+    reply = m.cmd_get(bot, st.load(), "https://x.com/big.zip", "-1")
+    assert "50 MB se badi" in reply and bot.sent == []
+
+
+def test_get_via_dispatch_edits_ack(monkeypatch, tmp_path):
+    bot = _get_env(monkeypatch, tmp_path, INJECTED_COMMAND="/get https://x.com/a.pdf", ACK_MESSAGE_ID="55")
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert bot.sent == [("-100123", "a.pdf")]
+    assert bot.msgs[0][1].startswith("EDIT#55:✅ Bhej di: a.pdf")

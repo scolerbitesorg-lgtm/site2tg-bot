@@ -55,6 +55,8 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          CHANNEL_ID_VIDEO: ${{ secrets.CHANNEL_ID_VIDEO }}
+          CHANNEL_ID_FILES: ${{ secrets.CHANNEL_ID_FILES }}
           OWNER_ID: ${{ secrets.OWNER_ID }}
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}

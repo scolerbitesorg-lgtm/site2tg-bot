@@ -40,6 +40,7 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 | `/sync` | abhi sync karo |
 | `/status` | kitni files gayi, last sync, errors, ruki hui badi files |
 | `/retry` | jo files 3 baar fail hui, unhe dobara try karo |
+| `/get <link>` | ek **direct file link** (jaise `…/video.mp4`, `…/app.apk`, `…/notes.pdf`) turant download karke channel mein. Stream (m3u8), YouTube ya web page links nahi chalte |
 | `/id` | aapka OWNER_ID aur CHANNEL_ID |
 | `/menu` | buttons wala menu (Vercel webhook ke saath) |
 | `/ai <sawal>` | AI se bot ke baare mein poocho (Vercel + NVIDIA key ke saath). Ya seedha koi bhi message likh do |
@@ -48,7 +49,8 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 ⚡ **Vercel webhook laga hai toh (neeche "Hamesha online" section):**
 - `/menu` → buttons: 📊 Status, 🌐 Sites, 🔄 Sync now, 🔁 Retry, ➕ Add site, 🗑 Remove site, 🤖 Ask AI, ❓ Help. Telegram ke **Menu** button mein bhi saare commands dikhte hain.
 - `/start`, `/help`, `/id`, `/menu`, **`/status`, `/sites`** → **turant** jawab. Status live hota hai: GitHub repo se seedha padha jaata hai (state.json + abhi kaunsa run chal raha hai).
-- `/addsite`, `/removesite`, `/sync`, `/retry` (ya unke buttons) → turant "⏳ chal raha hai…", aur Vercel usi second GitHub run start karta hai. Run khatam hote hi **wahi ⏳ message result se badal jaata hai**. Nayi files channel mein aati hain.
+- `/get <link>`, `/addsite`, `/removesite`, `/sync`, `/retry` (ya unke buttons: 📥 Download link, ➕, 🗑, 🔄, 🔁) → turant "⏳ chal raha hai…", aur Vercel usi second GitHub run start karta hai. Run khatam hote hi **wahi ⏳ message result se badal jaata hai**. Nayi files channel mein aati hain.
+- ⏱ Asli test (28 Oct): command bhejne ke ~1 sec mein GitHub run bana, ~5 sec mein shuru hua, aur ~18 sec mein jawab aa gaya (chhota kaam). Download/upload wale kaam file size pe depend karte hain (test mein 12 MB APK ka download + upload ≈ 3-15 sec). Ek run chal raha ho toh agla uske baad shuru hota hai.
 - Koi bhi normal message (ya 🤖 Ask AI) → AI jawab deta hai, bot ke live status ke hisaab se (NVIDIA key daali ho toh). AI khud kuch add/delete nahi karta, sirf batata hai kaunsa command chalana hai.
 - Agar pehle se koi sync chal raha hai, toh naya kaam uske baad line mein chalega (koi command kho nahi jaata).
 
@@ -91,6 +93,12 @@ https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/secrets/actions
 Wahi secrets page (https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/secrets/actions):
 - `OWNER_ID` → aapka user id (sirf number)
 - `CHANNEL_ID` → channel id (`-100` se shuru hone wala poora number)
+
+### Step 5b (optional): Videos aur files alag channels mein
+Do alag private channels banao (jaise "My Videos" aur "My Files"), dono mein bot ko admin banao, har channel ki ek post bot ko forward karke id lo. Phir Secrets mein:
+- `CHANNEL_ID_VIDEO` → video channel id (mp4, mkv, webm, mov… yahan jayenge)
+- `CHANNEL_ID_FILES` → files channel id (APK, PDF, zip, baaki sab yahan)
+Jo set nahi kiya, uski files `CHANNEL_ID` wale main channel mein jaati hain. Dono set hon toh `CHANNEL_ID` zaroori nahi. `/status` mein dikhta hai kaunsi cheez kahan ja rahi hai.
 
 ### Step 6: Chalu karo
 - https://github.com/scolerbitesorg-lgtm/site2tg-bot/actions kholo. Agar "enable workflows" jaisa button dikhe toh daba do.

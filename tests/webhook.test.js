@@ -119,7 +119,7 @@ test("/start, /menu, /help reply instantly with the inline menu, no GitHub call"
     assert.strictEqual(calls.length, 1, c);
     assert.strictEqual(sent[0].chat_id, 111);
     const kb = sent[0].reply_markup.inline_keyboard.flat().map((b) => b.callback_data);
-    assert.deepStrictEqual(kb.sort(), ["m:add", "m:ai", "m:help", "m:retry", "m:rm", "m:sites", "m:status", "m:sync"].sort());
+    assert.deepStrictEqual(kb.sort(), ["m:add", "m:ai", "m:get", "m:help", "m:retry", "m:rm", "m:sites", "m:status", "m:sync"].sort());
   }
 });
 
@@ -403,7 +403,7 @@ test("setup sets webhook (message + callback_query) on the production URL, plus 
   const set = calls.find((c) => c.url.endsWith("/setWebhook"));
   assert.deepStrictEqual(set.body, { url: "https://site2tg-bot.vercel.app/api/telegram", secret_token: S, allowed_updates: ["message", "callback_query"], max_connections: 5 });
   const cmds = calls.find((c) => c.url.endsWith("/setMyCommands")).body.commands.map((c) => c.command);
-  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "addsite", "removesite", "sync", "retry", "id", "help"]);
+  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "get", "addsite", "removesite", "sync", "retry", "id", "help"]);
   assert.deepStrictEqual(calls.find((c) => c.url.endsWith("/setChatMenuButton")).body, { menu_button: { type: "commands" } });
   assert.match(res.body, /Webhook set ho gaya/);
   assert.ok(!res.body.includes(S) && !res.body.includes(ENV.BOT_TOKEN));
@@ -439,4 +439,40 @@ test("Telegram error during setup is shown without the token", async () => {
   assert.strictEqual(res.statusCode, 502);
   assert.ok(!res.body.includes(ENV.BOT_TOKEN));
   assert.match(res.body, /401/);
+});
+
+// ---------------------------------------------------------------- /get + per-type channels
+
+test("/get <link> dispatches at once with ⏳; streams/YouTube refused instantly; usage without link", async () => {
+  let r = await run(ENV, msg("/get https://cdn.x.com/v.mp4", 111), S);
+  assert.match(r.sent[0].text, /^⏳ File download/);
+  assert.deepStrictEqual(r.calls.find((c) => c.url.endsWith("/dispatches")).body.inputs, { command: "/get https://cdn.x.com/v.mp4", ack_message_id: "501" });
+  for (const u of ["https://x.com/live/index.m3u8", "https://x.com/a.m3u8?token=1", "https://www.youtube.com/watch?v=1", "https://youtu.be/abc", "https://x.com/v.mpd"]) {
+    r = await run(ENV, msg("/get " + u, 111), S);
+    assert.match(r.sent[0].text, /stream\/YouTube/, u);
+    assert.ok(!r.calls.some((c) => c.url.endsWith("/dispatches")), u);
+  }
+  r = await run(ENV, msg("/get", 111), S);
+  assert.match(r.sent[0].text, /Aise likho: \/get/);
+});
+
+test("📥 Download link button asks for a link; the reply becomes /get", async () => {
+  let r = await run(ENV, cb("m:get", 111), S);
+  const prompt = r.sent[0];
+  assert.ok(prompt.text.startsWith(W.GET_PROMPT));
+  assert.strictEqual(prompt.reply_markup.force_reply, true);
+  const reply = (text) => msg(text, 111, { reply_to_message: { message_id: 8, from: { id: 1, is_bot: true }, text: prompt.text } });
+  r = await run(ENV, reply("https://cdn.x.com/app.apk"), S);
+  assert.strictEqual(r.calls.find((c) => c.url.endsWith("/dispatches")).body.inputs.command, "/get https://cdn.x.com/app.apk");
+  r = await run(ENV, reply("https://youtu.be/xyz"), S);
+  assert.match(r.sent[0].text, /stream\/YouTube/);
+  r = await run(ENV, reply("not a link"), S);
+  assert.match(r.sent[0].text, /link nahi lag raha/);
+});
+
+test("status shows channel routing and the last /get from state.json", () => {
+  const st = Object.assign({}, STATE, { routing: "videos → alag video channel, baaki files → main channel", last_get: { at: "2026-10-28T08:55:00Z", name: "a.apk", size: 12582912 } });
+  const t = formatStatus({ state: st, runs: [] }, NOW);
+  assert.match(t, /Channels: videos → alag video channel, baaki files → main channel/);
+  assert.match(t, /Last \/get: a\.apk \(12\.0 MB\), 28 Oct 02:25 PM IST/);
 });

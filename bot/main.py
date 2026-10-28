@@ -15,11 +15,12 @@ import shutil
 import sys
 import tempfile
 import time
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from . import adapters, state as st, userbot
+from .adapters.base import Item
 from .telegram_api import BOT_UPLOAD_LIMIT, Bot, TelegramError
-from .util import http, human_size, ist, now_iso, parse_iso, redact
+from .util import http, human_size, ist, now_iso, parse_iso, redact, safe_name
 
 USERBOT_LIMIT = 2_000_000_000
 SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 60)
@@ -38,9 +39,33 @@ HELP = """🤖 site2tg-bot commands
 /status — kitni files gayi, last sync, errors
 /retry — jo files 3 baar fail hui, unhe dobara try karo
 /id — aapka OWNER_ID aur CHANNEL_ID
+/get <link> — ek direct file link (…/video.mp4, .apk, .pdf) turant download karke channel mein
 /help — ye message
 
 Note: Vercel webhook laga hai toh /menu, /status, /sites turant; add/remove/sync/retry ka "⏳ chal raha hai" turant aur result ~1-2 min mein. Webhook nahi laga toh bot har ~1 ghante pe jaagta hai."""
+
+
+VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi", ".3gp"}
+STREAM_HINTS = (".m3u8", ".mpd")
+STREAM_HOSTS = ("youtube.com", "youtu.be")
+
+
+def is_video(item) -> bool:
+    return item.kind == "video" or os.path.splitext(item.filename.lower())[1] in VIDEO_EXTS
+
+
+def pick_channel(item, default):
+    """Videos -> CHANNEL_ID_VIDEO, everything else -> CHANNEL_ID_FILES; each
+    falls back to CHANNEL_ID when not set."""
+    if is_video(item):
+        return os.environ.get("CHANNEL_ID_VIDEO") or default
+    return os.environ.get("CHANNEL_ID_FILES") or default
+
+
+def routing_note():
+    v = "alag video channel" if os.environ.get("CHANNEL_ID_VIDEO") else "main channel"
+    f = "alag files channel" if os.environ.get("CHANNEL_ID_FILES") else "main channel"
+    return f"videos → {v}, baaki files → {f}"
 
 
 def log(msg):
@@ -163,6 +188,7 @@ def cmd_status(state, _):
         f"Total files bheji: {state.get('files_sent_total', 0)}",
         f"Last sync: {ist(state.get('last_sync'))}",
         f"Last result: {state.get('last_result') or '-'}",
+        f"Channels: {routing_note()}",
         f"Badi files (>50 MB) ke liye userbot: {'ON ✅' if userbot.available() else 'OFF (secrets nahi hain)'}",
     ]
     if big:
@@ -196,6 +222,64 @@ def cmd_sync(state, _):
     return "🔄 Sync shuru ho raha hai (isi run mein). Khatam hote hi result bhejunga."
 
 
+def cmd_get(bot, state, arg, default_channel):
+    """/get <direct file URL>: download that one file and post it."""
+    if not arg:
+        return "Aise likho: /get https://site.com/file.mp4\n(sirf direct file link: .mp4 .apk .pdf .zip …)"
+    url = arg.split()[0].strip("<>")
+    p = urlparse(url)
+    if p.scheme not in ("http", "https") or "." not in p.netloc:
+        return "Ye link sahi nahi lag raha. http:// ya https:// wala direct file link bhejo."
+    host = p.netloc.lower()
+    if p.path.lower().endswith(STREAM_HINTS) or any(host == h or host.endswith("." + h) for h in STREAM_HOSTS):
+        return "Ye stream/YouTube link hai. Ye bot sirf direct file links download karta hai (jaise …/video.mp4, …/app.apk)."
+    name = safe_name(unquote(os.path.basename(p.path)), "file")
+    ext = os.path.splitext(name.lower())[1]
+    item = Item(id=f"get:{p.netloc}{p.path}", url=url, filename=name, caption=name,
+                kind="video" if ext in VIDEO_EXTS else "document")
+    tmp = tempfile.mkdtemp(prefix="site2tg-get-")
+    try:
+        try:
+            path, real = download(item, tmp)
+        except Exception as e:
+            msg = str(e)
+            if "web page" in msg:
+                return "Ye link file nahi, web page khol raha hai. Direct file link chahiye (jo browser mein kholte hi download ho)."
+            return f"Download nahi hua: {redact(e)}"
+        with open(path, "rb") as f:
+            head = f.read(16)
+        if head.startswith(b"#EXTM3U"):
+            return "Ye m3u8 stream playlist hai, file nahi. Ye bot streams download nahi karta."
+        if not ext and head[4:8] == b"ftyp":  # mp4 without a name
+            item.filename = item.caption = name + ".mp4"
+            item.kind = "video"
+            os.rename(path, path + ".mp4")
+            path += ".mp4"
+        digest = file_hash(path)
+        if any(digest in hs for hs in state["hashes"].values()):
+            return f"Ye file pehle se channel mein hai, dobara nahi bheji: {item.filename}"
+        channel = pick_channel(item, default_channel)
+        if real <= BOT_UPLOAD_LIMIT:
+            bot.send_file(channel, path, item.filename, item.caption, item.kind)
+        elif userbot.available():
+            userbot.send_big(channel, path, item.caption, item.kind)
+        else:
+            return (f"File {human_size(real)} ki hai, 50 MB se badi. Iske liye API_ID, API_HASH, SESSION_STRING "
+                    "secrets chahiye (README dekho).")
+        state["hashes"].setdefault("/get", []).append(digest)
+        state["files_sent_total"] = state.get("files_sent_total", 0) + 1
+        where = "video channel" if is_video(item) and os.environ.get("CHANNEL_ID_VIDEO") else (
+            "files channel" if not is_video(item) and os.environ.get("CHANNEL_ID_FILES") else "channel")
+        state["last_get"] = {"at": now_iso(), "name": item.filename, "size": real}
+        log(f"/get sent {item.filename}")
+        return f"✅ Bhej di: {item.filename} ({human_size(real)}) → {where}"
+    except Exception as e:
+        st.add_error(state, f"/get {item.filename}: {redact(e)}", now_iso())
+        return f"Bhej nahi paya: {redact(e)}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 COMMANDS = {
     "/addsite": cmd_addsite, "/removesite": cmd_removesite, "/sites": cmd_sites,
     "/status": cmd_status, "/sync": cmd_sync, "/retry": cmd_retry, "/id": cmd_id, "/help": lambda s, a: HELP, "/start": lambda s, a: HELP,
@@ -209,8 +293,11 @@ def run_command(bot, state, text, chat_id, edit_message_id=None):
     parts = text.split(maxsplit=1)
     cmd = parts[0].split("@")[0].lower()
     arg = parts[1].strip() if len(parts) > 1 else ""
-    fn = COMMANDS.get(cmd)
-    reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
+    if cmd == "/get":
+        reply = cmd_get(bot, state, arg, os.environ.get("CHANNEL_ID"))
+    else:
+        fn = COMMANDS.get(cmd)
+        reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
     if edit_message_id:
         try:
             bot.edit_message(chat_id, edit_message_id, reply)
@@ -368,9 +455,9 @@ def sync(bot, state, channel_id):
                         log(f"duplicate of an already sent file, skipped: {item.filename}")
                         continue
                     if real <= BOT_UPLOAD_LIMIT:
-                        bot.send_file(channel_id, path, item.filename, item.caption, item.kind)
+                        bot.send_file(pick_channel(item, channel_id), path, item.filename, item.caption, item.kind)
                     elif has_userbot:
-                        userbot.send_big(channel_id, path, item.caption, item.kind)
+                        userbot.send_big(pick_channel(item, channel_id), path, item.caption, item.kind)
                     else:
                         state["big_pending"][item.id] = {"site": url, "name": item.filename, "size": real}
                         big_now += 1
@@ -448,7 +535,9 @@ def main():
     token = os.environ.get("BOT_TOKEN")
     channel_id = os.environ.get("CHANNEL_ID")
     owner_id = os.environ.get("OWNER_ID")
-    missing = [k for k, v in (("BOT_TOKEN", token), ("CHANNEL_ID", channel_id), ("OWNER_ID", owner_id)) if not v]
+    # CHANNEL_ID is optional only when both per-type channels are set
+    has_channels = bool(channel_id or (os.environ.get("CHANNEL_ID_VIDEO") and os.environ.get("CHANNEL_ID_FILES")))
+    missing = [k for k, v in (("BOT_TOKEN", token), ("CHANNEL_ID", has_channels), ("OWNER_ID", owner_id)) if not v]
     if token and missing:
         print("::warning::Setup mode (missing " + ", ".join(missing) + "): replying with ids only.")
         state = st.load()
@@ -465,6 +554,7 @@ def main():
     bot = Bot(token)
     state = st.load()
     dedupe_sites(state)
+    state["routing"] = routing_note()
     try:
         if webhook_active(bot):
             log("webhook mode: not polling getUpdates")
