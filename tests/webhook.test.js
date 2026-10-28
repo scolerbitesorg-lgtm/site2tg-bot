@@ -405,7 +405,7 @@ test("setup sets webhook (message + callback_query) on the production URL, plus 
   const set = calls.find((c) => c.url.endsWith("/setWebhook"));
   assert.deepStrictEqual(set.body, { url: "https://site2tg-bot.vercel.app/api/telegram", secret_token: S, allowed_updates: ["message", "callback_query"], max_connections: 5 });
   const cmds = calls.find((c) => c.url.endsWith("/setMyCommands")).body.commands.map((c) => c.command);
-  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "get", "addsite", "removesite", "sync", "retry", "id", "help"]);
+  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "get", "addsite", "removesite", "sync", "addplaylist", "addyoutube", "youtubes", "removeyoutube", "yt", "retry", "id", "help"]);
   assert.deepStrictEqual(calls.find((c) => c.url.endsWith("/setChatMenuButton")).body, { menu_button: { type: "commands" } });
   assert.match(res.body, /Webhook set ho gaya/);
   assert.ok(!res.body.includes(S) && !res.body.includes(ENV.BOT_TOKEN));
