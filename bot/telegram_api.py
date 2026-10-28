@@ -43,6 +43,10 @@ class Bot:
     def get_webhook_info(self):
         return self.call("getWebhookInfo", {}, timeout=20, tries=2)
 
+    def edit_message(self, chat_id, message_id, text):
+        return self.call("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": text[:4000],
+                                             "disable_web_page_preview": "true"}, tries=2)
+
     def send_message(self, chat_id, text):
         return self.call("sendMessage", {"chat_id": chat_id, "text": text[:4000],
                                          "disable_web_page_preview": "true"})

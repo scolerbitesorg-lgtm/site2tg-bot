@@ -40,7 +40,7 @@ HELP = """🤖 site2tg-bot commands
 /id — aapka OWNER_ID aur CHANNEL_ID
 /help — ye message
 
-Note: Vercel webhook laga hai toh har command ka "mil gaya" turant aata hai, aur asli jawab GitHub run ke baad (1-3 min). Webhook nahi laga toh bot har ~1 ghante pe jaagta hai."""
+Note: Vercel webhook laga hai toh /menu, /status, /sites turant; add/remove/sync/retry ka "⏳ chal raha hai" turant aur result ~1-2 min mein. Webhook nahi laga toh bot har ~1 ghante pe jaagta hai."""
 
 
 def log(msg):
@@ -160,13 +160,21 @@ COMMANDS = {
 }
 
 
-def run_command(bot, state, text, chat_id):
-    """Answer one owner command (already checked to be from the owner)."""
+def run_command(bot, state, text, chat_id, edit_message_id=None):
+    """Answer one owner command (already checked to be from the owner).
+    edit_message_id: the webhook's "⏳ chal raha hai…" message; it is edited
+    into the result (a new message is sent if the edit fails)."""
     parts = text.split(maxsplit=1)
     cmd = parts[0].split("@")[0].lower()
     arg = parts[1].strip() if len(parts) > 1 else ""
     fn = COMMANDS.get(cmd)
     reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
+    if edit_message_id:
+        try:
+            bot.edit_message(chat_id, edit_message_id, reply)
+            return
+        except Exception as e:
+            log(f"edit failed, sending instead: {e}")
     try:
         bot.send_message(chat_id, reply)
     except TelegramError as e:
@@ -199,6 +207,11 @@ def injected_command():
     needs a GitHub token for this repo."""
     text = (os.environ.get("INJECTED_COMMAND") or "").strip()
     return text if text.startswith("/") else ""
+
+
+def ack_message_id():
+    v = (os.environ.get("ACK_MESSAGE_ID") or "").strip()
+    return int(v) if v.isdigit() else None
 
 
 def webhook_active(bot):
@@ -407,7 +420,7 @@ def main():
         cmd = injected_command()
         if cmd:
             log(f"dispatched command: {cmd.split()[0]}")
-            run_command(bot, state, cmd, owner_id)
+            run_command(bot, state, cmd, owner_id, ack_message_id())
         if state["sites"] and sync_due(state):
             asked = bool(state.get("sync_requested"))
             state["sync_requested"] = False

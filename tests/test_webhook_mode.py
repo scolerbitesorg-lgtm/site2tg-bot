@@ -24,6 +24,11 @@ class HookBot:
     def send_message(self, chat_id, text):
         self.msgs.append((chat_id, text))
 
+    def edit_message(self, chat_id, message_id, text):
+        if message_id == 666:
+            raise RuntimeError("message to edit not found")
+        self.msgs.append((chat_id, f"EDIT#{message_id}:" + text))
+
     def send_file(self, chat_id, path, filename, caption, kind):
         self.sent.append((chat_id, filename))
 
@@ -34,6 +39,7 @@ def _env(monkeypatch, tmp_path, **extra):
         monkeypatch.setenv(k, v)
     monkeypatch.delenv("WEBHOOK_MODE", raising=False)
     monkeypatch.delenv("INJECTED_COMMAND", raising=False)
+    monkeypatch.delenv("ACK_MESSAGE_ID", raising=False)
     for k, v in extra.items():
         monkeypatch.setenv(k, v)
 
@@ -149,3 +155,19 @@ def test_setup_mode_offset_persisted_across_runs(monkeypatch, tmp_path):
     bot.get_updates = lambda offset: [] if offset >= 10 else [{"update_id": 9, "message": {}}]
     m.main()                                   # next run asks from offset 10: no re-reply
     assert bot.msgs == [] and st.load()["offset"] == 10
+
+
+def test_injected_command_edits_the_ack_message(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path, INJECTED_COMMAND="/sites", ACK_MESSAGE_ID="77")
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert bot.msgs and bot.msgs[0][1].startswith("EDIT#77:")
+
+
+def test_failed_edit_falls_back_to_new_message(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path, INJECTED_COMMAND="/sites", ACK_MESSAGE_ID="666")
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert len(bot.msgs) == 1 and not bot.msgs[0][1].startswith("EDIT")

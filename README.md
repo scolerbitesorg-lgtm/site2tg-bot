@@ -40,12 +40,16 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 | `/status` | kitni files gayi, last sync, errors, ruki hui badi files |
 | `/retry` | jo files 3 baar fail hui, unhe dobara try karo |
 | `/id` | aapka OWNER_ID aur CHANNEL_ID |
+| `/menu` | buttons wala menu (Vercel webhook ke saath) |
+| `/ai <sawal>` | AI se bot ke baare mein poocho (Vercel + NVIDIA key ke saath). Ya seedha koi bhi message likh do |
 | `/help` | help |
 
 ⚡ **Vercel webhook laga hai toh (neeche "Hamesha online" section):**
-- `/start`, `/help`, `/id` → **turant** jawab (Vercel khud deta hai)
-- `/addsite`, `/removesite`, `/sites`, `/status`, `/sync`, `/retry` → turant "✅ Mil gaya", phir Vercel GitHub pe run start karta hai. Asli jawab / files **~1-3 min** mein aate hain (GitHub run ko start hone mein ~10-60 sec lagte hain, phir kaam). Badi files ya bahut saari files ho toh zyada.
-- Agar pehle se koi sync chal raha hai, toh naya command uske baad line mein chalega (koi command kho nahi jaata).
+- `/menu` → buttons: 📊 Status, 🌐 Sites, 🔄 Sync now, 🔁 Retry, ➕ Add site, 🗑 Remove site, 🤖 Ask AI, ❓ Help. Telegram ke **Menu** button mein bhi saare commands dikhte hain.
+- `/start`, `/help`, `/id`, `/menu`, **`/status`, `/sites`** → **turant** jawab. Status live hota hai: GitHub repo se seedha padha jaata hai (state.json + abhi kaunsa run chal raha hai).
+- `/addsite`, `/removesite`, `/sync`, `/retry` (ya unke buttons) → turant "⏳ chal raha hai…", aur Vercel usi second GitHub run start karta hai. Run khatam hote hi **wahi ⏳ message result se badal jaata hai**. Nayi files channel mein aati hain.
+- Koi bhi normal message (ya 🤖 Ask AI) → AI jawab deta hai, bot ke live status ke hisaab se (NVIDIA key daali ho toh). AI khud kuch add/delete nahi karta, sirf batata hai kaunsa command chalana hai.
+- Agar pehle se koi sync chal raha hai, toh naya kaam uske baad line mein chalega (koi command kho nahi jaata).
 
 ⏰ **Webhook nahi laga toh:** bot har ghante ek baar jaagta hai (GitHub kabhi-kabhi 5-15 min late bhi karta hai), command ka jawab agle run pe aayega.
 Jaldi chahiye toh: **Actions → site2tg-bot → Run workflow** dabao, 1-2 min mein jawab aa jayega.
@@ -104,7 +108,10 @@ Isse bot har command pe **turant** jawab deta hai. Vercel free (Hobby) plan kaaf
 2. **Token name**: `site2tg-vercel`
 3. **Expiration**: jitna lamba chaho (expire hone pe naya banana padega, bot "GH_TOKEN galat hai ya expire" bolega)
 4. **Repository access** → **Only select repositories** → `site2tg-bot` chuno
-5. **Permissions** → **Repository permissions** → **Actions** → **Read and write** (Metadata: Read apne aap aa jayega). Aur kuch mat do.
+5. **Permissions** → **Repository permissions** mein sirf ye do:
+   - **Actions** → **Read and write** (command aate hi GitHub run start karne ke liye)
+   - **Contents** → **Read-only** (live /status aur /sites ke liye state.json padhne ko)
+   (Metadata: Read apne aap aa jayega.) Aur kuch mat do.
 6. **Generate token** → token (`github_pat_...`) copy karo. Ye dobara nahi dikhega, aur kisi ko mat bhejna.
 
 ### Step B: Ek secret word socho
@@ -115,7 +122,7 @@ Isse bot har command pe **turant** jawab deta hai. Vercel free (Hobby) plan kaaf
 2. **Import Git Repository** mein `site2tg-bot` dhoondo → **Import**
    (List mein na dikhe toh **Adjust GitHub App Permissions** → `site2tg-bot` allow karo)
 3. **Framework Preset**: `Other` (apne aap aayega). Root Directory: `./`. Build settings mat chhedo.
-4. **Environment Variables** khol ke ye 5 daalo:
+4. **Environment Variables** khol ke ye 5 daalo (+ AI ke liye optional):
 
 | Name | Value |
 |---|---|
@@ -124,6 +131,8 @@ Isse bot har command pe **turant** jawab deta hai. Vercel free (Hobby) plan kaaf
 | `GH_TOKEN` | Step A wala `github_pat_...` token |
 | `GH_REPO` | `scolerbitesorg-lgtm/site2tg-bot` |
 | `WEBHOOK_SECRET` | Step B wala word |
+| `NVIDIA_API_KEY` | *(optional, AI ke liye)* build.nvidia.com wali key (`nvapi-...`), Step E dekho |
+| `NVIDIA_MODEL` | *(optional)* AI model badalna ho toh. Default `openai/gpt-oss-20b` |
 
 5. **Deploy** dabao. 1 min mein "Congratulations" aayega.
 6. Project ka **domain** dekho (Project → **Domains**, jaise `site2tg-bot.vercel.app` ya `site2tg-bot-xyz.vercel.app`). Lamba wala deployment link (jisme random letters hon) mat lena, wo Vercel ke login ke peeche hota hai aur Telegram usse nahi khol sakta.
@@ -133,16 +142,26 @@ Phone browser mein kholo (apna domain aur secret daal ke):
 ```
 https://<aapka-domain>/api/setup?key=<WEBHOOK_SECRET>
 ```
-"✅ Webhook set ho gaya!" aana chahiye. Ab bot ko `/help` bhejo, turant jawab aayega. 🎉
+"✅ Webhook set ho gaya!" aana chahiye. Ab bot ko `/menu` bhejo, turant buttons aayenge. 🎉
+(Telegram ka **Menu** button bhi isi link se set hota hai.)
 
 Kaam ke links (same key ke saath):
 - Status dekhna: `https://<aapka-domain>/api/setup?key=<WEBHOOK_SECRET>&action=info`
 - **Wapas purana mode** (sirf GitHub, har ghante): `...&action=delete`. GitHub bot apne aap samajh jayega aur phir se khud commands padhne lagega.
 - Webhook ka health: `https://<aapka-domain>/api/telegram` kholo. Koi env var missing hai toh naam bata dega.
 
+### Step E (optional): AI assistant (NVIDIA, free)
+1. https://build.nvidia.com kholo → login / sign up (free)
+2. Koi bhi chat model kholo (jaise `openai/gpt-oss-20b`) → **Get API Key** → **Generate Key** → copy (`nvapi-...`). Kisi ko mat bhejna.
+3. Vercel → Project → **Settings → Environment Variables** → `NVIDIA_API_KEY` = wo key → Save
+4. **Deployments → ⋯ → Redeploy**
+5. Bot ko koi bhi sawal likho: "kitni files gayi?", "last sync kab hua?", "nayi site kaise jodu?"
+
+AI ko har sawal ke saath bot ka live status (sites, files count, last sync, errors, GitHub runs) bheja jaata hai, koi token/secret nahi. Jawab ~5-25 sec mein aata hai; NVIDIA slow ho toh bot bolega "dobara pucho". Model kaam na kare toh `NVIDIA_MODEL` mein build.nvidia.com ka koi aur model id daal do.
+
 ⚠️ Vercel pe koi env var badla toh **Deployments → sabse upar wala → ⋯ → Redeploy** karna padta hai, tabhi naya value lagta hai.
 
-**Kya-kya hota hai:** Telegram har message Vercel ko bhejta hai (secret header ke saath, warna Vercel mana kar deta hai). Vercel sirf OWNER_ID ki baat sunta hai. Bhaari command aaye toh GitHub ko "workflow chalao, command = /sync" bolta hai. GitHub run wahi command chala ke aapko jawab bhejta hai. Webhook laga ho toh GitHub run Telegram se purane tareeke (getUpdates) se messages nahi padhta, double kaam nahi hota. Setting `WEBHOOK_MODE` (repo variable) `1`/`0` se ye zabardasti on/off kar sakte ho, warna bot Telegram se khud pooch leta hai.
+**Kya-kya hota hai:** Telegram har message aur button Vercel ko bhejta hai (secret header ke saath, warna Vercel mana kar deta hai). Vercel sirf OWNER_ID ki baat sunta hai. Status/sites wo repo se khud padh ke batata hai. Add/remove/sync/retry pe pehle "⏳" bhejta hai, phir GitHub ko "workflow chalao, command = /sync" bolta hai. GitHub run wahi command chala ke us ⏳ message ko result se badal deta hai. Webhook laga ho toh GitHub run Telegram se purane tareeke (getUpdates) se messages nahi padhta, double kaam nahi hota. Setting `WEBHOOK_MODE` (repo variable) `1`/`0` se ye zabardasti on/off kar sakte ho, warna bot Telegram se khud pooch leta hai.
 
 **Setup mode:** Vercel pe `OWNER_ID` na daala ho toh bot kisi ko bhi uska user id batata hai, aur channel ki forward ki hui post pe channel id. (OWNER_ID daalne ke baad bhi, aap channel ki post forward karoge toh channel id bata dega.)
 
@@ -210,7 +229,7 @@ bot/state.py          state.json padhna/likhna
 state.json            bot ki yaadash (sites, bheji gayi files, errors)
 api/telegram.js       Vercel webhook (Telegram yahan bhejta hai)
 api/setup.js          webhook set/info/delete wala link
-lib/webhook.js        webhook ka code (owner check, GitHub dispatch)
+lib/webhook.js        webhook ka code (owner check, menu buttons, live status, AI, GitHub dispatch)
 vercel.json, .vercelignore, public/   Vercel settings
 scripts/gen_session.py  SESSION_STRING banane ke liye (Termux)
 scripts/live_check.py   site check: kaun si files milengi

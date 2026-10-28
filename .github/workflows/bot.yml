@@ -15,6 +15,11 @@ on:
         required: false
         default: ""
         type: string
+      ack_message_id:
+        description: "Telegram message id of the webhook's ⏳ message (edited into the result). Leave empty."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -55,6 +60,7 @@ jobs:
           WEBHOOK_MODE: ${{ vars.WEBHOOK_MODE }}
           # passed through env (never pasted into the script) so text can't run as shell
           INJECTED_COMMAND: ${{ inputs.command }}
+          ACK_MESSAGE_ID: ${{ inputs.ack_message_id }}
         run: python -m bot.main
 
       - name: Save state.json
