@@ -16,7 +16,7 @@ DEFAULT = {
     "files_sent_total": 0,
     "fails": {},            # item id -> failed tries
     "errors": [],           # last 20: {at, msg}
-    "sync_requested": False,
+    "sync_requested": False,\n    "youtube_sources": [],  # public channel/playlist link trackers\n    "youtube_seen": {},     # source key -> posted video IDs\n    "youtube_pending": {},  # source key -> durable queue of public watch links
 }
 
 
