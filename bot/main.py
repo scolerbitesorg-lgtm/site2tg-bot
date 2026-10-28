@@ -22,6 +22,7 @@ from . import adapters, state as st, userbot
 from .adapters.base import Item
 from .telegram_api import BOT_UPLOAD_LIMIT, Bot, TelegramError
 from .util import http, human_size, ist, now_iso, parse_iso, redact, safe_name
+from .security import safe_request, validate_url_shape
 
 USERBOT_LIMIT = 2_000_000_000
 SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 60)
@@ -123,8 +124,11 @@ def dedupe_sites(state):
 
 
 def valid_url(u: str) -> bool:
-    p = urlparse(u)
-    return p.scheme in ("http", "https") and "." in p.netloc
+    try:
+        validate_url_shape(u)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 # ---------------------------------------------------------------- commands
@@ -244,8 +248,8 @@ def cmd_get(bot, state, arg, default_channel):
         return "Aise likho: /get https://site.com/file.mp4\n(sirf direct file link: .mp4 .apk .pdf .zip …)"
     url = arg.split()[0].strip("<>")
     p = urlparse(url)
-    if p.scheme not in ("http", "https") or "." not in p.netloc:
-        return "Ye link sahi nahi lag raha. http:// ya https:// wala direct file link bhejo."
+    if not valid_url(url):
+        return "Ye link sahi nahi lag raha. Sirf public http:// ya https:// file link chalega; local/private addresses allowed nahi hain."
     host = p.netloc.lower()
     if p.path.lower().endswith(STREAM_HINTS) or any(host == h or host.endswith("." + h) for h in STREAM_HOSTS):
         return "Ye stream/YouTube link hai. Ye bot sirf direct file links download karta hai (jaise …/video.mp4, …/app.apk)."
@@ -382,15 +386,20 @@ def download(item, folder):
     """Stream the file to disk. Returns (path, size) or raises."""
     path = os.path.join(folder, item.filename)
     s = http()
-    with s.get(item.url, headers=item.headers, stream=True, timeout=(20, 120)) as r:
+    with safe_request(item.url, session=s, headers=item.headers, stream=True, timeout=(20, 120)) as r:
         if r.status_code != 200:
             raise RuntimeError(f"download HTTP {r.status_code}")
-        ctype = r.headers.get("Content-Type", "")
-        if ctype.startswith("text/html"):
+        ctype = r.headers.get("Content-Type", "").lower()
+        if ctype.startswith(("text/html", "application/xhtml+xml")):
             raise RuntimeError("download gave a web page, not a file")
+        declared = r.headers.get("Content-Length")
+        if declared and declared.isdigit() and int(declared) > USERBOT_LIMIT:
+            raise RuntimeError("file bigger than 2 GB")
         size = 0
         with open(path, "wb") as f:
             for chunk in r.iter_content(1024 * 256):
+                if not chunk:
+                    continue
                 size += len(chunk)
                 if size > USERBOT_LIMIT:
                     raise RuntimeError("file bigger than 2 GB")
@@ -412,7 +421,7 @@ def remote_size(item):
     if item.size:
         return int(item.size)
     try:
-        r = http().head(item.url, headers=item.headers, allow_redirects=True, timeout=20)
+        r = safe_request(item.url, session=http(), method="HEAD", headers=item.headers, timeout=20)
         n = r.headers.get("Content-Length")
         return int(n) if n and r.status_code == 200 else None
     except Exception:

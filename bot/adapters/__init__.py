@@ -1,6 +1,7 @@
 """Pick the right adapter for a site."""
 from . import generic, tgvideo
 from ..util import http
+from ..security import safe_request
 
 ADAPTERS = {"tgvideo": tgvideo, "generic": generic}
 
@@ -12,7 +13,7 @@ def detect(html: str) -> str:
 
 
 def fetch_page(url: str) -> str:
-    r = http().get(url, timeout=30)
+    r = safe_request(url, session=http(), timeout=30)
     r.raise_for_status()
     return r.text
 

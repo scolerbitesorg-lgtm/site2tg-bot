@@ -10,6 +10,7 @@ from urllib.parse import urljoin, urlparse, unquote, urldefrag
 
 from .base import Item
 from ..util import UA, http, safe_name
+from ..security import safe_request
 
 # file types the bot picks up (page icons/screenshots/logs are deliberately not included)
 EXTS = {
@@ -150,7 +151,7 @@ def _robots(site_url, session):
     rp = robotparser.RobotFileParser()
     pu = urlparse(site_url)
     try:
-        r = session.get(f"{pu.scheme}://{pu.netloc}/robots.txt", timeout=15)
+        r = safe_request(f"{pu.scheme}://{pu.netloc}/robots.txt", session=session, timeout=15)
         if r.status_code >= 400:
             return None  # no robots.txt: allowed
         rp.parse(r.text.splitlines())
@@ -189,7 +190,7 @@ def crawl(site_url: str, first_html: str, depth: int, max_pages: int = DEFAULT_M
                     continue
                 sleep(delay)
                 try:
-                    r = s.get(u, timeout=20, headers={"Referer": page_url})
+                    r = safe_request(u, session=s, timeout=20, headers={"Referer": page_url})
                 except Exception:
                     continue
                 if r.status_code != 200 or "html" not in r.headers.get("Content-Type", "text/html"):
