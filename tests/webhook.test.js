@@ -120,7 +120,7 @@ test("/start, /menu, /help reply instantly with the inline menu, no GitHub call"
     assert.strictEqual(calls.length, 1, c);
     assert.strictEqual(sent[0].chat_id, 111);
     const kb = sent[0].reply_markup.inline_keyboard.flat().map((b) => b.callback_data);
-    assert.deepStrictEqual(kb.sort(), ["m:add", "m:ai", "m:get", "m:help", "m:retry", "m:rm", "m:sites", "m:status", "m:sync"].sort());
+    assert.deepStrictEqual(kb.sort(), ["m:add", "m:ai", "m:get", "m:help", "m:retry", "m:rm", "m:sites", "m:status", "m:sync", "m:addplaylist", "m:addyoutube", "m:youtubes", "m:removeyoutube", "m:yt"].sort());
   }
 });
 
