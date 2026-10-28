@@ -102,20 +102,35 @@ def _feed_entries(kind, source_id):
 
 
 def fetch_entries(source):
-    """Return newest public video entries, oldest first for one-by-one delivery."""
+    """Return public video entries oldest-first for sequential delivery."""
     try:
         entries = _feed_entries(source["kind"], source["id"])
     except Exception:
         if source["kind"] != "playlist":
             raise
         entries = []
-    if source["kind"] == "playlist" and not entries:
-        r = safe_request(source["url"], session=http(), timeout=25,
-                         headers={"Accept-Language": "en-US,en;q=0.8"})
-        if r.status_code != 200:
-            raise RuntimeError(f"YouTube playlist page HTTP {r.status_code}")
-        ids = list(dict.fromkeys(re.findall(r'"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"', r.text)))
-        entries = [{"id": video_id, "title": "YouTube playlist video", "published": "",
-                    "url": f"https://www.youtube.com/watch?v={video_id}"} for video_id in ids]
+
+    if source["kind"] == "playlist":
+        # Prefer the public playlist page as it can expose more than the
+        # latest 15 feed entries. Keep feed titles when available and merge
+        # any additional IDs from the page into the durable queue.
+        try:
+            r = safe_request(source["url"], session=http(), timeout=25,
+                             headers={"Accept-Language": "en-US,en;q=0.8"})
+            if r.status_code != 200:
+                raise RuntimeError(f"YouTube playlist page HTTP {r.status_code}")
+            ids = list(dict.fromkeys(re.findall(r'"videoId"\\s*:\\s*"([A-Za-z0-9_-]{11})"', r.text)))
+            by_id = {entry["id"]: entry for entry in entries}
+            for video_id in ids:
+                by_id.setdefault(video_id, {
+                    "id": video_id, "title": "YouTube playlist video", "published": "",
+                    "url": f"https://www.youtube.com/watch?v={video_id}"
+                })
+            entries = list(by_id.values())
+        except Exception:
+            if not entries:
+                raise
+
+    # RSS feed is newest-first. Reverse to keep posts in chronological order.
     entries.reverse()
     return entries
