@@ -34,7 +34,7 @@ def test_full_run(tmp_path, monkeypatch):
     big = Item(id="x:2", url="https://s/2.mp4", filename="2.mp4", caption="c2", size=90_000_000, kind="video")
     broken = Item(id="x:3", url="https://s/3.apk", filename="3.apk", caption="c3", size=10)
 
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", [small, big, broken]))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", [small, big, broken]))
 
     def fake_download(item, folder):
         if item.id == "x:3":
@@ -97,7 +97,7 @@ def test_setup_mode_tells_ids(monkeypatch, tmp_path):
 def test_site_limit(monkeypatch, tmp_path):
     monkeypatch.setattr(st, "STATE_FILE", str(tmp_path / "state.json"))
     items = [Item(id=f"u:{i}", url=f"https://s/{i}.apk", filename=f"{i}.apk", caption="", size=10) for i in range(7)]
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", items))
 
     def fake_download(item, folder):
         p = os.path.join(folder, item.filename)
@@ -124,7 +124,7 @@ def test_duplicate_content_posted_once(monkeypatch, tmp_path):
     monkeypatch.setattr(st, "STATE_FILE", str(tmp_path / "state.json"))
     items = [Item(id="u:a", url="https://s/latest.apk", filename="latest.apk", caption="", size=5),
              Item(id="u:b", url="https://s/v52.apk", filename="v52.apk", caption="", size=5)]
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", items))
 
     def fake_download(item, folder):
         p = os.path.join(folder, item.filename)

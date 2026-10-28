@@ -49,7 +49,7 @@ def _env(monkeypatch, tmp_path, **extra):
 def test_webhook_mode_uses_injected_command_only(monkeypatch, tmp_path):
     _env(monkeypatch, tmp_path, INJECTED_COMMAND="/addsite mysite.com 2")
     item = Item(id="a:1", url="https://s/1.apk", filename="1.apk", caption="c", size=10)
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", [item]))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", [item]))
 
     def fake_download(it, folder):
         p = os.path.join(folder, it.filename)
@@ -74,7 +74,7 @@ def test_webhook_mode_sync_command_always_reports(monkeypatch, tmp_path):
     s["sites"] = [{"url": "https://e.com", "adapter": "generic", "added": "x", "limit": 3}]
     s["last_sync"] = "2099-01-01T00:00:00Z"   # not due by time
     st.save(s)
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", []))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", []))
     bot = HookBot()
     monkeypatch.setattr(m, "Bot", lambda token: bot)
     m.main()
@@ -177,7 +177,7 @@ def test_failed_edit_falls_back_to_new_message(monkeypatch, tmp_path):
 
 def test_same_site_typed_differently_is_not_added_twice(monkeypatch, tmp_path):
     _env(monkeypatch, tmp_path)
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("tgvideo", []))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("tgvideo", []))
     s = st.load()
     for u in ("https://videoclasses.vercel.app/", "videoclasses.vercel.app", "http://www.VideoClasses.vercel.app"):
         reply = m.cmd_addsite(s, u)
@@ -200,7 +200,7 @@ def test_old_duplicate_entries_are_merged_and_nothing_is_posted_twice(monkeypatc
     st.save(s)
     items = [Item(id=f"tgvideo:1:{i}", url=f"https://s/{i}.mp4", filename=f"{i}.mp4", caption="", size=10, kind="video")
              for i in (4, 5, 6)]
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("tgvideo", items))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("tgvideo", items))
 
     def fake_download(it, folder):
         p = os.path.join(folder, it.filename)
@@ -225,7 +225,7 @@ def test_same_file_listed_by_two_different_sites_goes_once(monkeypatch, tmp_path
     s["sent"] = {"https://a.com": [], "https://b.com": []}
     st.save(s)
     same = Item(id="url:https://cdn/app.apk", url="https://cdn/app.apk", filename="app.apk", caption="", size=10)
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", [same]))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", [same]))
 
     def fake_download(it, folder):
         p = os.path.join(folder, it.filename)
@@ -248,7 +248,7 @@ def test_videos_and_files_go_to_their_own_channels(monkeypatch, tmp_path):
     items = [Item(id="1", url="https://a/v.mp4", filename="v.mp4", caption="", size=10, kind="video"),
              Item(id="2", url="https://a/x.apk", filename="x.apk", caption="", size=10),
              Item(id="3", url="https://a/c.mkv", filename="c.mkv", caption="", size=10)]
-    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", items))
 
     def fake_download(it, folder):
         p = os.path.join(folder, it.filename)
@@ -335,3 +335,54 @@ def test_get_via_dispatch_edits_ack(monkeypatch, tmp_path):
     m.main()
     assert bot.sent == [("-100123", "a.pdf")]
     assert bot.msgs[0][1].startswith("EDIT#55:✅ Bhej di: a.pdf")
+
+
+def test_addsite_depth_option(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path)
+    seen = {}
+
+    def fake_list(url, adapter=None, depth=0):
+        seen["depth"] = depth
+        return ("generic", [])
+
+    monkeypatch.setattr(m.adapters, "list_items", fake_list)
+    s = st.load()
+    assert "5 level" in m.cmd_addsite(s, "https://a.com") and seen["depth"] == 5 and s["sites"][0]["depth"] == 5
+    assert "Depth 0 se 5" in m.cmd_addsite(s, "https://b.com 3 9")
+    assert "2 level" in m.cmd_addsite(s, "a.com/ 4 2") and s["sites"][0] == {**s["sites"][0], "limit": 4, "depth": 2}
+    assert "2 level andar" in m.cmd_sites(s, "")
+
+
+def test_parallel_downloads_upload_in_order(monkeypatch, tmp_path):
+    import threading
+    import time as _t
+    _env(monkeypatch, tmp_path, PARALLEL_DOWNLOADS="4")
+    monkeypatch.setattr(m, "UPLOAD_GAP_SECONDS", 0)
+    monkeypatch.setattr(m, "PARALLEL_DOWNLOADS", 4)
+    s = st.load()
+    s["sites"] = [{"url": "https://a.com", "adapter": "generic", "added": "x", "limit": 6}]
+    st.save(s)
+    items = [Item(id=f"i{n}", url=f"https://a/{n}.mp4", filename=f"{n}.mp4", caption="", size=10, kind="video")
+             for n in range(6)]
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None, **kw: ("generic", items))
+    live, peak, lock = [0], [0], threading.Lock()
+
+    def slow_download(it, folder):
+        with lock:
+            live[0] += 1
+            peak[0] = max(peak[0], live[0])
+        _t.sleep(0.3 if it.id == "i0" else 0.05)      # first file is the slowest
+        p = os.path.join(folder, it.filename)
+        open(p, "wb").write(it.id.encode())
+        with lock:
+            live[0] -= 1
+        return p, 2
+
+    monkeypatch.setattr(m, "download", slow_download)
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    t0 = _t.time()
+    m.main()
+    assert [f for _, f in bot.sent] == [f"{n}.mp4" for n in range(6)]   # posted in order
+    assert peak[0] > 1                                                  # downloads overlapped
+    assert _t.time() - t0 < 1.0                                         # not 0.3 + 5*0.05 sequential + gaps

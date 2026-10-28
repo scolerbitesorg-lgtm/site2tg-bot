@@ -129,3 +129,76 @@ def test_tgvideo_cycle_and_duplicates_are_safe():
     data = {"catalog": {"courses": [{"cid": 1, "name": "C", "folders": [node]}]}}
     items = tgvideo.items_from_catalog(data, "https://x/")
     assert [i.id for i in items] == ["tgvideo:1:3"]
+
+
+# ---------------------------------------------------------------- same-site crawl
+
+class _Resp:
+    def __init__(self, text, status=200, ctype="text/html"):
+        self.text, self.status_code, self.headers = text, status, {"Content-Type": ctype}
+
+
+class FakeSite:
+    """A tiny local multi-page site."""
+    def __init__(self, pages, robots=None):
+        self.pages, self.robots, self.got = pages, robots, []
+
+    def get(self, url, timeout=None, headers=None):
+        self.got.append(url)
+        if url.endswith("/robots.txt"):
+            return _Resp(self.robots, 200, "text/plain") if self.robots is not None else _Resp("", 404)
+        if url in self.pages:
+            return _Resp(self.pages[url])
+        return _Resp("nope", 404)
+
+
+ROOT = "https://my.site/files/"
+SITE = {
+    ROOT: '<title>Home</title><a href="a/">A</a> <a href="b/">B</a> <a href="/login">x</a> '
+          '<a href="https://other.com/files/x/">o</a> <a href="/blog/">outside path</a> <a href="style.css">c</a>',
+    ROOT + "a/": '<title>Topic A</title><a href="a1/">a1</a>',
+    ROOT + "a/a1/": '<title>Lecture A1</title><a href="v1.mp4">v</a> <a href="deeper/">should not be followed</a>',
+    ROOT + "a/a1/deeper/": '<a href="never.mp4">x</a>',
+    ROOT + "b/": '<title>Topic B</title><a href="app.apk">apk</a> <a href="../a/a1/v1.mp4">same file again</a> <a href="b1/">b1</a>',
+    ROOT + "b/b1/": '<a href="never2.pdf">x</a>',
+    "https://my.site/blog/": '<a href="blog.pdf">x</a>',
+}
+
+
+def test_crawl_collects_files_from_inner_pages_and_stops_at_found_branches():
+    site = FakeSite(SITE)
+    items = generic.list_items(ROOT, SITE[ROOT], depth=5, session=site, sleep=lambda s: None)
+    got = {i.filename: i.caption for i in items}
+    # v1.mp4 is linked from Topic B (level 1) and Lecture A1 (level 2): one item, first page wins
+    assert got == {"v1.mp4": "Topic B · v1.mp4", "app.apk": "Topic B · app.apk"}
+    assert ROOT + "a/a1/deeper/" not in site.got and ROOT + "b/b1/" not in site.got     # smart stop
+    assert all("other.com" not in u and "/login" not in u and "/blog/" not in u and not u.endswith(".css")
+               for u in site.got)
+    assert ROOT + "a/a1/" in site.got                                           # branch A had no files yet: went deeper
+    v = [i for i in items if i.filename == "v1.mp4"][0]
+    assert v.kind == "video" and v.headers["Referer"] == ROOT + "b/"
+
+
+def test_crawl_depth_and_page_cap_and_delay():
+    site = FakeSite(SITE)
+    one = generic.list_items(ROOT, SITE[ROOT], depth=1, session=site, sleep=lambda s: None)
+    assert sorted(i.filename for i in one) == ["app.apk", "v1.mp4"] and ROOT + "a/a1/" not in site.got
+    site = FakeSite(SITE)
+    pauses = []
+    generic.list_items(ROOT, SITE[ROOT], depth=5, max_pages=2, session=site, sleep=pauses.append)
+    assert len([u for u in site.got if not u.endswith("robots.txt")]) == 1      # root given + 1 fetched = cap 2
+    assert pauses == [0.5]
+    assert [i.id for i in generic.list_items(ROOT, '<a href="x.zip">z</a>', depth=0)] == ["url:https://my.site/files/x.zip"]
+
+
+def test_crawl_respects_robots_txt():
+    site = FakeSite(SITE, robots="User-agent: *\nDisallow: /files/b/\n")
+    items = generic.list_items(ROOT, SITE[ROOT], depth=5, session=site, sleep=lambda s: None)
+    assert [i.filename for i in items] == ["v1.mp4"]
+    assert ROOT + "b/" not in site.got
+
+
+def test_root_page_with_files_is_not_crawled():
+    site = FakeSite({ROOT: '<a href="z.apk">z</a> <a href="a/">a</a>'})
+    items = generic.list_items(ROOT, site.pages[ROOT], depth=5, session=site, sleep=lambda s: None)
+    assert [i.filename for i in items] == ["z.apk"] and site.got == [ROOT.replace("/files/", "/robots.txt")]

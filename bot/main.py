@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import unquote, urlparse
 
 from . import adapters, state as st, userbot
@@ -32,7 +33,7 @@ START = time.time()
 
 HELP = """🤖 site2tg-bot commands
 
-/addsite <url> [limit] — nayi website jodo (limit = ek sync mein max nayi files, default 3)
+/addsite <url> [limit] [depth] — nayi website jodo (limit = ek sync mein max nayi files, default 3; depth = andar ke pages kitne level, 0-5, default 5)
 /removesite <url> — website hatao
 /sites — saari websites ki list
 /sync — abhi sync karo (agle run pe)
@@ -128,32 +129,46 @@ def valid_url(u: str) -> bool:
 
 # ---------------------------------------------------------------- commands
 
+NEW_SITE_DEPTH = 5  # inner-page levels for a newly added normal site (0-5)
+
+
 def cmd_addsite(state, arg):
     if not arg:
-        return "Aise likho: /addsite https://meri-site.com 3\n(3 = ek sync mein max kitni nayi files, optional, default 3)"
+        return ("Aise likho: /addsite https://meri-site.com 3 2\n"
+                "(3 = ek sync mein max nayi files, default 3; 2 = andar ke kitne level ke pages bhi dekhe, 0-5, default 5. Dono optional)")
     parts = arg.split()
     url = norm_url(parts[0])
-    limit = DEFAULT_SITE_LIMIT
+    limit, depth = DEFAULT_SITE_LIMIT, NEW_SITE_DEPTH
     if len(parts) > 1:
         if not parts[1].isdigit() or int(parts[1]) < 1:
             return "Limit ek number hona chahiye, jaise: /addsite https://meri-site.com 5"
         limit = int(parts[1])
+    if len(parts) > 2:
+        if not parts[2].isdigit() or int(parts[2]) > 5:
+            return "Depth 0 se 5 tak ka number hona chahiye, jaise: /addsite https://meri-site.com 5 2"
+        depth = int(parts[2])
     if not valid_url(url):
         return "Ye URL sahi nahi lag raha."
     s = find_site(state, url)
     if s:
         if len(parts) > 1:
             s["limit"] = limit
-            return f"Ye site pehle se hai ({s['url']}). Limit ab {limit} files per sync kar di."
+            if len(parts) > 2:
+                s["depth"] = depth
+            return (f"Ye site pehle se hai ({s['url']}). Ab: max {s['limit']} files per sync, "
+                    f"andar ke pages: {s.get('depth', 0)} level.")
         return f"Ye site pehle se list mein hai: {s['url']}"
     try:
-        name, items = adapters.list_items(url)
+        name, items = adapters.list_items(url, depth=depth)
     except Exception as e:
         return f"Site khul nahi rahi: {redact(e)}"
-    state["sites"].append({"url": url, "adapter": name, "added": now_iso(), "limit": limit})
+    site = {"url": url, "adapter": name, "added": now_iso(), "limit": limit}
+    if name == "generic":
+        site["depth"] = depth
+    state["sites"].append(site)
     state["sent"].setdefault(url, [])
     state["sync_requested"] = True
-    kind = "video catalog site" if name == "tgvideo" else "normal page (direct file links)"
+    kind = "video catalog site" if name == "tgvideo" else f"normal page + andar ke pages ({depth} level)"
     return (f"✅ Site jod di: {url}\nType: {kind}\nAbhi {len(items)} files mili. "
             f"Har sync mein max {limit} nayi files jayengi. Sync isi run mein shuru ho raha hai.")
 
@@ -174,7 +189,8 @@ def cmd_removesite(state, arg):
 def cmd_sites(state, _):
     if not state["sites"]:
         return "Abhi koi site nahi hai. /addsite <url> se jodo."
-    lines = [f"{i}. {s['url']} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync) — "
+    lines = [f"{i}. {s['url']} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync"
+             + (f", {s['depth']} level andar" if s.get("depth") else "") + ") — "
              f"{len(state['sent'].get(s['url'], []))} files bheji"
              for i, s in enumerate(state["sites"], 1)]
     return "🌐 Websites:\n" + "\n".join(lines)
@@ -403,25 +419,46 @@ def remote_size(item):
         return None
 
 
+PARALLEL_DOWNLOADS = max(1, int(os.environ.get("PARALLEL_DOWNLOADS") or 4))
+UPLOAD_GAP_SECONDS = 1.0  # small pause between channel posts (Telegram flood limits)
+
+
+def _fetch(item, folder, size_limit):
+    """Runs in a worker thread: size check, then download. Never raises."""
+    try:
+        size = remote_size(item)
+        if size and size > size_limit:
+            return ("big", size)
+        sub = tempfile.mkdtemp(dir=folder)  # own folder: same filenames can't clash
+        path, real = download(item, sub)
+        return ("ok", path, real)
+    except Exception as e:
+        return ("err", e)
+
+
 def sync(bot, state, channel_id):
     sent_now, failed, big_now = 0, 0, 0
     has_userbot = userbot.available()
+    size_limit = USERBOT_LIMIT if has_userbot else BOT_UPLOAD_LIMIT
     # never post the same file twice, even if two site entries list it
     all_ids = {i for ids in state["sent"].values() for i in ids}
     all_hashes = {h for hs in state["hashes"].values() for h in hs}
     tmp = tempfile.mkdtemp(prefix="site2tg-")
+    pool = ThreadPoolExecutor(max_workers=PARALLEL_DOWNLOADS)
+    last_upload = 0.0
     try:
         for site in list(state["sites"]):
             url = site["url"]
             done = set(state["sent"].setdefault(url, []))
             site_limit = int(site.get("limit") or DEFAULT_SITE_LIMIT)
-            site_sent = 0
             try:
-                name, items = adapters.list_items(url, site.get("adapter"))
+                name, items = adapters.list_items(url, site.get("adapter"), depth=int(site.get("depth") or 0))
             except Exception as e:
                 failed += 1
                 st.add_error(state, f"{url}: list failed: {redact(e)}", now_iso())
                 continue
+            # pick this sync's new files for the site
+            todo = []
             for item in items:
                 if item.id in done:
                     continue
@@ -431,21 +468,28 @@ def sync(bot, state, channel_id):
                     continue
                 if state["fails"].get(item.id, 0) >= MAX_TRIES:
                     continue  # gave up on this file; shown in /status
-                if site_sent >= site_limit:
+                if len(todo) >= site_limit:
                     break  # rest of this site's new files go in later syncs
-                if sent_now >= MAX_FILES_PER_RUN or time.time() - START > MAX_RUN_SECONDS:
+                if sent_now + len(todo) >= MAX_FILES_PER_RUN or time.time() - START > MAX_RUN_SECONDS:
                     state["sync_requested"] = True  # continue on next run
                     break
-                size = remote_size(item)
-                limit = USERBOT_LIMIT if has_userbot else BOT_UPLOAD_LIMIT
-                if size and size > limit:
-                    if item.id not in state["big_pending"]:
-                        big_now += 1
-                    state["big_pending"][item.id] = {"site": url, "name": item.filename, "size": size}
-                    continue
-                path = None
+                todo.append(item)
+            if not todo:
+                continue
+            # download in parallel, post to Telegram one by one in the original order
+            futures = [(item, pool.submit(_fetch, item, tmp, size_limit)) for item in todo]
+            for item, fut in futures:
+                res = fut.result()
+                path = res[1] if res[0] == "ok" else None
                 try:
-                    path, real = download(item, tmp)
+                    if res[0] == "big":
+                        if item.id not in state["big_pending"]:
+                            big_now += 1
+                        state["big_pending"][item.id] = {"site": url, "name": item.filename, "size": res[1]}
+                        continue
+                    if res[0] == "err":
+                        raise res[1]
+                    real = res[2]
                     log(f"downloaded {item.filename} ({human_size(real)})")
                     digest = file_hash(path)
                     hashes = state["hashes"].setdefault(url, [])
@@ -454,14 +498,18 @@ def sync(bot, state, channel_id):
                         done.add(item.id)
                         log(f"duplicate of an already sent file, skipped: {item.filename}")
                         continue
-                    if real <= BOT_UPLOAD_LIMIT:
-                        bot.send_file(pick_channel(item, channel_id), path, item.filename, item.caption, item.kind)
-                    elif has_userbot:
-                        userbot.send_big(pick_channel(item, channel_id), path, item.caption, item.kind)
-                    else:
+                    if real > BOT_UPLOAD_LIMIT and not has_userbot:
                         state["big_pending"][item.id] = {"site": url, "name": item.filename, "size": real}
                         big_now += 1
                         continue
+                    wait = UPLOAD_GAP_SECONDS - (time.time() - last_upload)
+                    if wait > 0:
+                        time.sleep(wait)
+                    if real <= BOT_UPLOAD_LIMIT:
+                        bot.send_file(pick_channel(item, channel_id), path, item.filename, item.caption, item.kind)
+                    else:
+                        userbot.send_big(pick_channel(item, channel_id), path, item.caption, item.kind)
+                    last_upload = time.time()
                     state["sent"][url].append(item.id)
                     hashes.append(digest)
                     done.add(item.id)
@@ -471,7 +519,6 @@ def sync(bot, state, channel_id):
                     state["fails"].pop(item.id, None)
                     state["files_sent_total"] = state.get("files_sent_total", 0) + 1
                     sent_now += 1
-                    site_sent += 1
                     log(f"sent {item.filename}")
                 except Exception as e:
                     failed += 1
@@ -482,6 +529,7 @@ def sync(bot, state, channel_id):
                     if path and os.path.exists(path):
                         os.remove(path)
     finally:
+        pool.shutdown(wait=True)
         shutil.rmtree(tmp, ignore_errors=True)
     state["last_sync"] = now_iso()
     state["last_result"] = f"{sent_now} bheji, {failed} fail, {big_now} badi files ruki"

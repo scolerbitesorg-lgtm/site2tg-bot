@@ -14,6 +14,9 @@ Sab kuch free servers pe chalta hai (GitHub Actions + Vercel), **aapke phone ka 
 **Website types:**
 1. **Video site** (jaise https://videoclasses.vercel.app/) — bot khud pehchaan leta hai, saari videos caption ke saath bhejta hai: `Course · Folder · Title`. Folders kitne bhi andar hon (Course → Topic → Subject → Lecture → videos), sab milte hain aur caption mein poora raasta aata hai: `Course · Topic · Subject · Lecture · Title`
 2. **Normal page** — page pe jitne direct file links hain (`.apk .mp4 .mkv .pdf .zip .mp3 .epub` etc.), sab bhej deta hai. Page ke icons/screenshots/log files nahi bhejta.
+   - **Andar ke pages bhi:** bot usi site ke andar ke links (same website, aur jo URL diya uske andar ke path) follow karta hai, default **5 level** tak. Jis page pe files mil gayi, us branch mein aur andar nahi jaata (wo branch poori). Ek sync mein max 60 pages, har page ke beech 0.5 sec ruk ke, aur site ki `robots.txt` maanta hai. Login/cart/admin jaise pages skip.
+   - Level badalna: `/addsite <url> <limit> <depth>` (depth 0-5; 0 = sirf wahi page). Pehle se judi site pe dobara bhejo toh badal jaata hai.
+   - ⚠️ Sirf seedha HTML padhta hai. Jo site links JavaScript se banati hai (page khulne ke baad load hote hain), wo links bot ko nahi dikhenge.
 
 Ek hi file do alag links pe ho (jaise `latest.apk` aur `v52.apk` same file), ya do sites pe same file ho, toh channel mein ek hi baar jaayegi.
 Same site do baar nahi judti: `https://site.com/`, `site.com`, `http://www.site.com` sab ek hi maane jaate hain.
@@ -34,7 +37,7 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 
 | Command | Kaam |
 |---|---|
-| `/addsite <url> [limit]` | nayi website jodo. `limit` = ek sync mein max kitni nayi files (default 3). Pehle se judi site pe dobara bhejo toh limit badal jaati hai |
+| `/addsite <url> [limit] [depth]` | nayi website jodo. `limit` = ek sync mein max kitni nayi files (default 3). `depth` = andar ke pages kitne level tak dekhe (0-5, default 5). Pehle se judi site pe dobara bhejo toh dono badal jaate hain |
 | `/removesite <url>` | website hatao |
 | `/sites` | saari websites |
 | `/sync` | abhi sync karo |
@@ -210,6 +213,7 @@ https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/variables/actions pe
 - `SYNC_EVERY_MIN` — kitne minute mein sync ho (default `60`). Commands har run pe padhe jaate hain.
 - `WEBHOOK_MODE` — `1` = webhook mode, `0` = polling. Khali chhodo, bot khud pata kar leta hai.
 - `MAX_FILES_PER_RUN` — ek run mein saari sites mila ke max files (default `15`). Baaki agle run mein.
+- `PARALLEL_DOWNLOADS` — ek saath kitni files download hon (default `4`). Telegram pe upload phir bhi line se, ek-ek karke (thoda gap, Telegram ki limit ka dhyan). Bahut saari videos jaldi chahiye toh ise aur `MAX_FILES_PER_RUN` / site limit badhao.
 - Har site ki apni limit `/addsite <url> <limit>` se badlo.
 
 Run ka time badalna ho toh `.github/workflows/bot.yml` mein `cron: "17 * * * *"` (har ghante, 17 minute pe) badlo.

@@ -17,7 +17,9 @@ def fetch_page(url: str) -> str:
     return r.text
 
 
-def list_items(url: str, adapter: str = None):
+def list_items(url: str, adapter: str = None, depth: int = 0):
     html = fetch_page(url)
     name = adapter or detect(html)
+    if name == "generic":
+        return name, generic.list_items(url, html, depth=depth)
     return name, ADAPTERS[name].list_items(url, html)

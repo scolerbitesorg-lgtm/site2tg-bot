@@ -18,6 +18,7 @@ const STATE = {
   sites: [
     { url: "https://f-droid.org/en/packages/org.fdroid.fdroid/", adapter: "generic", limit: 3 },
     { url: "https://videoclasses.vercel.app/", adapter: "tgvideo", limit: 5 },
+    { url: "https://my.site/files/", adapter: "generic", limit: 3, depth: 5 },
   ],
   sent: { "https://f-droid.org/en/packages/org.fdroid.fdroid/": ["a", "b", "c"] },
   files_sent_total: 3,
@@ -140,7 +141,7 @@ test("/status is answered from the repo instantly (state.json + runs), no dispat
   assert.ok(!calls.some((c) => c.url.endsWith("/dispatches")));
   const t = sent[0].text;
   assert.match(t, /Live status/);
-  assert.match(t, /Websites: 2/);
+  assert.match(t, /Websites: 3/);
   assert.match(t, /Total files bheji: 3/);
   assert.match(t, /Last sync: 28 Oct 02:02 PM IST \(28 min pehle\)/);
   assert.match(t, /lecture\.mp4 \(85\.8 MB\)/);
@@ -155,6 +156,7 @@ test("/sites lists sites with counts", async () => {
   const { sent } = await run(ENV, msg("/sites", 111), S);
   assert.match(sent[0].text, /1\. https:\/\/f-droid\.org\/en\/packages\/org\.fdroid\.fdroid\/ \(generic, max 3\/sync\) — 3 files bheji/);
   assert.match(sent[0].text, /2\. https:\/\/videoclasses\.vercel\.app\/ \(tgvideo, max 5\/sync\) — 0 files bheji/);
+  assert.match(sent[0].text, /3\. https:\/\/my\.site\/files\/ \(generic, max 3\/sync, 5 level andar\) — 0 files bheji/);
 });
 
 test("status read failing (token without Contents: read) falls back to a GitHub run", async () => {
@@ -166,7 +168,7 @@ test("status read failing (token without Contents: read) falls back to a GitHub 
 
 test("status with state but runs unreadable still answers", () => {
   const t = formatStatus({ state: STATE, runs: null, runsError: "runs padh nahi paya: x" }, NOW);
-  assert.match(t, /Websites: 2/);
+  assert.match(t, /Websites: 3/);
   assert.match(t, /runs padh nahi paya/);
 });
 
@@ -257,7 +259,7 @@ test("➕ Add site asks for a URL (force_reply) and the reply becomes /addsite",
 test("🗑 Remove site lists sites as buttons; tapping one dispatches /removesite <exact url>", async () => {
   let r = await run(ENV, cb("m:rm", 111), S);
   const rows = r.sent[0].reply_markup.inline_keyboard;
-  assert.strictEqual(rows.length, 3); // 2 sites + cancel
+  assert.strictEqual(rows.length, 4); // 3 sites + cancel
   const data = rows[1][0].callback_data;
   assert.strictEqual(data, "rm:" + shortHash("https://videoclasses.vercel.app/"));
   assert.ok(Buffer.byteLength(data) <= 64);
