@@ -669,9 +669,11 @@ def sync(bot, state, channel_id):
     finally:
         pool.shutdown(wait=True)
         shutil.rmtree(tmp, ignore_errors=True)
+    yt_sent, yt_failed = sync_youtube_links(bot, state, channel_id)
+    failed += yt_failed
     state["last_sync"] = now_iso()
-    state["last_result"] = f"{sent_now} bheji, {failed} fail, {big_now} badi files ruki"
-    return sent_now, failed, big_now
+    state["last_result"] = f"{sent_now} files bheji, {yt_sent} YouTube links bheje, {failed} fail, {big_now} badi files ruki"
+    return sent_now + yt_sent, failed, big_now
 
 
 def sync_due(state):
