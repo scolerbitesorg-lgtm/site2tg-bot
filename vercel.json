@@ -1,3 +1,4 @@
+
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
@@ -6,6 +7,5 @@
     "api/*.js": {
       "maxDuration": 60
     }
-  },
-  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- api lib public vercel.json .vercelignore"
+  }
 }
