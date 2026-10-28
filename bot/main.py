@@ -672,7 +672,7 @@ def sync(bot, state, channel_id):
     yt_sent, yt_failed = sync_youtube_links(bot, state, channel_id)
     failed += yt_failed
     state["last_sync"] = now_iso()
-    state["last_result"] = f"{sent_now} files bheji, {yt_sent} YouTube links bheje, {failed} fail, {big_now} badi files ruki"
+    state["last_result"] = f"{sent_now + yt_sent} bheji, {failed} fail, {big_now} badi files ruki (files: {sent_now}, YouTube links: {yt_sent})"
     return sent_now + yt_sent, failed, big_now
 
 
