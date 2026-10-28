@@ -6,7 +6,7 @@ Sab kuch free servers pe chalta hai (GitHub Actions + Vercel), **aapke phone ka 
 ## Ye kya karta hai
 
 - **Vercel webhook** (optional, recommended): bot hamesha online, har command ka jawab turant ("✅ mil gaya"), aur bhaari kaam turant GitHub pe start
-- **GitHub Actions** asli kaam karta hai: download, upload, list, status. Har ghante khud bhi sync karta hai
+- **GitHub Actions** asli kaam karta hai: download, upload, list, status. Har 10 minute schedule par khud bhi sync karta hai (GitHub busy ho toh delay ho sakta hai)
 - Telegram pe aapke commands padhta hai aur jawab deta hai
 - Har site pe nayi files dhoondhta hai, download karta hai, channel mein bhejta hai, phir server se delete kar deta hai
 - Jo file ek baar bhej di, wo dobara nahi bhejega (`state.json` mein yaad rakhta hai)
