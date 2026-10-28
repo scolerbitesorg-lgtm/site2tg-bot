@@ -2,21 +2,24 @@
  "big_pending": {},
  "errors": [],
  "fails": {},
- "files_sent_total": 17,
+ "files_sent_total": 19,
  "hashes": {
   "https://videoclasses.vercel.app/": [
    "24052c3f1e5c0ac5bc4f",
    "96d73d6b471fc4af707a",
    "a39a9bd99486dada2267",
    "91666cf3e5a1e91aae99",
-   "4dec00137ff73b4c4e46"
+   "4dec00137ff73b4c4e46",
+   "5e7eb612bbfa5650257a",
+   "462fcec25aaff833504c"
   ]
  },
- "last_result": "0 bheji, 0 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-10-28T16:43:48Z",
+ "last_result": "2 bheji, 0 fail, 0 badi files ruki (files: 2, YouTube links: 0)",
+ "last_sync": "2026-10-28T17:42:24Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
+  "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [],
   "https://spidyiq.vercel.app/course/9854/English": [],
   "https://videoclasses.vercel.app/": [
    "tgvideo:3723101547:4",
@@ -24,7 +27,9 @@
    "tgvideo:3723101547:6",
    "tgvideo:3723101547:14",
    "tgvideo:3723101547:15",
-   "tgvideo:3723101547:18"
+   "tgvideo:3723101547:18",
+   "tgvideo:3723101547:19",
+   "tgvideo:3723101547:20"
   ]
  },
  "sites": [
@@ -40,6 +45,13 @@
    "depth": 5,
    "limit": 3,
    "url": "https://spidyiq.vercel.app/course/9854/English"
+  },
+  {
+   "adapter": "generic",
+   "added": "2026-10-28T17:22:26Z",
+   "depth": 5,
+   "limit": 3,
+   "url": "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams"
   }
  ],
  "sync_requested": false,
