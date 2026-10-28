@@ -1,0 +1,9 @@
+# Vercel only needs the webhook (api/, lib/) and the small public page.
+# Everything else (Python bot, state.json, tests) stays on GitHub only.
+bot
+scripts
+tests
+.github
+state.json
+requirements.txt
+README.md

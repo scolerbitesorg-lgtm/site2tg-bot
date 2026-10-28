@@ -1,10 +1,20 @@
 name: site2tg-bot
+# Run title shows the command when the Vercel webhook dispatched one.
+run-name: ${{ inputs.command && format('cmd {0}', inputs.command) || 'site2tg-bot' }}
 
 on:
   schedule:
-    # every 30 minutes (keeps a PRIVATE repo inside GitHub's free 2000 min/month)
-    - cron: "*/30 * * * *"
-  workflow_dispatch: {}
+    # every hour (minute 17) for the scheduled sync. Commands don't wait for
+    # this when the Vercel webhook is on: it starts a run right away.
+    # Hourly keeps a PRIVATE repo well inside GitHub's free 2000 min/month.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Bot command, e.g. /status (the Vercel webhook fills this). Empty = normal run."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -12,6 +22,9 @@ permissions:
 concurrency:
   group: site2tg-bot
   cancel-in-progress: false
+  # keep every waiting run (default would cancel a waiting command when a
+  # newer one arrives while a sync is running)
+  queue: max
 
 jobs:
   run:
@@ -38,6 +51,10 @@ jobs:
           SESSION_STRING: ${{ secrets.SESSION_STRING }}
           SYNC_EVERY_MIN: ${{ vars.SYNC_EVERY_MIN }}
           MAX_FILES_PER_RUN: ${{ vars.MAX_FILES_PER_RUN }}
+          # optional override: 1 = webhook mode, 0 = polling; empty = ask Telegram
+          WEBHOOK_MODE: ${{ vars.WEBHOOK_MODE }}
+          # passed through env (never pasted into the script) so text can't run as shell
+          INJECTED_COMMAND: ${{ inputs.command }}
         run: python -m bot.main
 
       - name: Save state.json

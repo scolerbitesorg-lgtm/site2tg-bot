@@ -1,5 +1,10 @@
-"""One run of the bot (GitHub Actions calls this every few minutes):
+"""One run of the bot (GitHub Actions calls this on a schedule, or right away
+when the Vercel webhook dispatches a command):
 1. read new Telegram commands from the owner and answer them
+   - polling mode: via getUpdates
+   - webhook mode (Vercel front-end set as the Telegram webhook): getUpdates is
+     disabled by Telegram, so the only command is the one the webhook passed in
+     as the workflow_dispatch input `command` (env INJECTED_COMMAND)
 2. if a sync is due (or /sync was sent), find new files on every site,
    download each one to disk, post it to the channel, delete it
 3. save state.json (the workflow commits it)
@@ -35,7 +40,7 @@ HELP = """🤖 site2tg-bot commands
 /id — aapka OWNER_ID aur CHANNEL_ID
 /help — ye message
 
-Note: bot har ~30 min pe jaagta hai, isliye reply aane mein thoda time lag sakta hai."""
+Note: Vercel webhook laga hai toh har command ka "mil gaya" turant aata hai, aur asli jawab GitHub run ke baad (1-3 min). Webhook nahi laga toh bot har ~1 ghante pe jaagta hai."""
 
 
 def log(msg):
@@ -146,13 +151,26 @@ def cmd_id(state, _):
 
 def cmd_sync(state, _):
     state["sync_requested"] = True
-    return "🔄 Sync shuru ho raha hai (isi run mein)."
+    return "🔄 Sync shuru ho raha hai (isi run mein). Khatam hote hi result bhejunga."
 
 
 COMMANDS = {
     "/addsite": cmd_addsite, "/removesite": cmd_removesite, "/sites": cmd_sites,
     "/status": cmd_status, "/sync": cmd_sync, "/retry": cmd_retry, "/id": cmd_id, "/help": lambda s, a: HELP, "/start": lambda s, a: HELP,
 }
+
+
+def run_command(bot, state, text, chat_id):
+    """Answer one owner command (already checked to be from the owner)."""
+    parts = text.split(maxsplit=1)
+    cmd = parts[0].split("@")[0].lower()
+    arg = parts[1].strip() if len(parts) > 1 else ""
+    fn = COMMANDS.get(cmd)
+    reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
+    try:
+        bot.send_message(chat_id, reply)
+    except TelegramError as e:
+        log(f"reply failed: {e}")
 
 
 def handle_updates(bot, state, owner_id):
@@ -172,15 +190,31 @@ def handle_updates(bot, state, owner_id):
         if str(sender) != str(owner_id):
             log("ignored command from non-owner user")
             continue
-        parts = text.split(maxsplit=1)
-        cmd = parts[0].split("@")[0].lower()
-        arg = parts[1].strip() if len(parts) > 1 else ""
-        fn = COMMANDS.get(cmd)
-        reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
-        try:
-            bot.send_message(msg["chat"]["id"], reply)
-        except TelegramError as e:
-            log(f"reply failed: {e}")
+        run_command(bot, state, text, msg["chat"]["id"])
+
+
+def injected_command():
+    """The command the Vercel webhook passed in (workflow_dispatch input), if any.
+    Only the owner can cause one: the webhook checks OWNER_ID and dispatching
+    needs a GitHub token for this repo."""
+    text = (os.environ.get("INJECTED_COMMAND") or "").strip()
+    return text if text.startswith("/") else ""
+
+
+def webhook_active(bot):
+    """True when a Telegram webhook is set (then getUpdates answers 409).
+    WEBHOOK_MODE=1 / 0 (repo variable) forces it; otherwise ask Telegram."""
+    forced = (os.environ.get("WEBHOOK_MODE") or "").strip().lower()
+    if forced in ("1", "true", "yes", "on"):
+        return True
+    if forced in ("0", "false", "no", "off"):
+        return False
+    try:
+        info = bot.get_webhook_info()
+    except Exception as e:  # can't tell: fall back to polling (old behaviour)
+        log(f"getWebhookInfo failed: {e}")
+        return False
+    return bool((info or {}).get("url"))
 
 
 # ---------------------------------------------------------------- sync
@@ -310,7 +344,17 @@ def sync_due(state):
 
 
 def setup_mode(bot, state):
-    """Only BOT_TOKEN is set: help the owner find their user id and channel id."""
+    """Only BOT_TOKEN is set: help the owner find their user id and channel id.
+    In webhook mode the Vercel function does this instantly, nothing to poll."""
+    if webhook_active(bot):
+        log("setup mode: webhook is set, Vercel replies with the ids; not polling")
+        if injected_command():
+            log("setup mode: dispatched command received but ignored until OWNER_ID and CHANNEL_ID are set: "
+                + injected_command().split()[0])
+        return
+    if injected_command():
+        log("setup mode: dispatched command received but ignored until OWNER_ID and CHANNEL_ID are set: "
+            + injected_command().split()[0])
     try:
         updates = bot.get_updates(state["offset"])
     except TelegramError as e:
@@ -356,12 +400,20 @@ def main():
     bot = Bot(token)
     state = st.load()
     try:
-        handle_updates(bot, state, owner_id)
+        if webhook_active(bot):
+            log("webhook mode: not polling getUpdates")
+        else:
+            handle_updates(bot, state, owner_id)
+        cmd = injected_command()
+        if cmd:
+            log(f"dispatched command: {cmd.split()[0]}")
+            run_command(bot, state, cmd, owner_id)
         if state["sites"] and sync_due(state):
+            asked = bool(state.get("sync_requested"))
             state["sync_requested"] = False
             sent, failed, big = sync(bot, state, channel_id)
             log(f"sync: {state['last_result']}")
-            if sent or failed or big:
+            if sent or failed or big or asked:
                 try:
                     bot.send_message(owner_id, f"🔄 Sync: {state['last_result']}. /status se details dekho.")
                 except TelegramError as e:

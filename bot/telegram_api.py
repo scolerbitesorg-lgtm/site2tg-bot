@@ -40,6 +40,9 @@ class Bot:
         return self.call("getUpdates", {"offset": offset, "timeout": 0,
                                         "allowed_updates": '["message"]'}, timeout=30)
 
+    def get_webhook_info(self):
+        return self.call("getWebhookInfo", {}, timeout=20, tries=2)
+
     def send_message(self, chat_id, text):
         return self.call("sendMessage", {"chat_id": chat_id, "text": text[:4000],
                                          "disable_web_page_preview": "true"})
