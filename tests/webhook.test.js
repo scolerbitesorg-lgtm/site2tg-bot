@@ -269,6 +269,30 @@ test("🗑 Remove site lists sites as buttons; tapping one dispatches /removesit
   assert.match(r.sent[0].text, /ab list mein nahi/);
 });
 
+test("YouTube menu buttons ask for input and reply dispatches the matching command", async () => {
+  const cases = [
+    ["m:addplaylist", "📺 Public YouTube playlist", "https://www.youtube.com/playlist?list=PL1234567890abcd", "/addplaylist https://www.youtube.com/playlist?list=PL1234567890abcd"],
+    ["m:addyoutube", "▶️ Public YouTube channel", "https://www.youtube.com/@sample", "/addyoutube https://www.youtube.com/@sample"],
+    ["m:removeyoutube", "🗑 Tracked YouTube playlist/channel", "PL1234567890abcd", "/removeyoutube PL1234567890abcd"],
+    ["m:yt", "🔗 YouTube video", "https://www.youtube.com/watch?v=abcdefghijk", "/yt https://www.youtube.com/watch?v=abcdefghijk"],
+  ];
+  for (const [button, promptStart, value, command] of cases) {
+    const opened = await run(ENV, cb(button, 111), S);
+    const prompt = opened.sent[0];
+    assert.ok(prompt.text.startsWith(promptStart), button);
+    assert.strictEqual(prompt.reply_markup.force_reply, true, button);
+    const replied = await run(ENV, msg(value, 111, {
+      reply_to_message: { message_id: 8, from: { id: 1, is_bot: true }, text: prompt.text },
+    }), S);
+    assert.strictEqual(replied.calls.find((call) => call.url.endsWith("/dispatches")).body.inputs.command, command, button);
+  }
+});
+
+test("YouTube trackers menu button dispatches /youtubes", async () => {
+  const r = await run(ENV, cb("m:youtubes", 111), S);
+  assert.strictEqual(r.calls.find((call) => call.url.endsWith("/dispatches")).body.inputs.command, "/youtubes");
+});
+
 test("unknown/old button gets a gentle message", async () => {
   const r = await run(ENV, cb("zzz", 111), S);
   assert.match(r.sent[0].text, /purana hai/);
