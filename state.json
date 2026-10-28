@@ -12,11 +12,6 @@
    "cd492ba2d5a425ad80aa",
    "730f81f2cf860b267141"
   ],
-  "https://videoclasses.vercel.app": [
-   "24052c3f1e5c0ac5bc4f",
-   "96d73d6b471fc4af707a",
-   "a39a9bd99486dada2267"
-  ],
   "https://videoclasses.vercel.app/": [
    "24052c3f1e5c0ac5bc4f",
    "96d73d6b471fc4af707a",
@@ -35,11 +30,6 @@
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000041.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000040.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000011.apk"
-  ],
-  "https://videoclasses.vercel.app": [
-   "tgvideo:3723101547:4",
-   "tgvideo:3723101547:5",
-   "tgvideo:3723101547:6"
   ],
   "https://videoclasses.vercel.app/": [
    "tgvideo:3723101547:4",
@@ -60,12 +50,6 @@
    "added": "2026-10-28T08:37:09Z",
    "limit": 3,
    "url": "https://videoclasses.vercel.app/"
-  },
-  {
-   "adapter": "tgvideo",
-   "added": "2026-10-28T08:37:10Z",
-   "limit": 3,
-   "url": "https://videoclasses.vercel.app"
   }
  ],
  "sync_requested": false
