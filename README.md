@@ -43,7 +43,12 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 | `/sync` | abhi sync karo |
 | `/status` | kitni files gayi, last sync, errors, ruki hui badi files |
 | `/retry` | jo files 3 baar fail hui, unhe dobara try karo |
-| `/get <link>` | ek **direct file link** (jaise `…/video.mp4`, `…/app.apk`, `…/notes.pdf`) turant download karke channel mein. Stream (m3u8), YouTube ya web page links nahi chalte |
+| `/get <link>` | ek **authorized direct file link** (jaise `…/video.mp4`, `…/app.apk`, `…/notes.pdf`) download karke channel mein. YouTube watch links aur protected streams media-download ke liye supported nahi hain |
+| `/addplaylist <URL/ID>` | public YouTube playlist track karo; available watch links queue mein aayenge aur ek-ek karke channel par post honge |
+| `/addyoutube <URL/UC...>` | public YouTube channel ke naye uploads track karo |
+| `/youtubes` | tracked channel/playlist, posted links aur pending queue dekho |
+| `/removeyoutube <URL/ID>` | YouTube tracker hatao |
+| `/yt <video URL>` | ek YouTube watch link channel par post karo; video file download nahi hoti |
 | `/id` | aapka OWNER_ID aur CHANNEL_ID |
 | `/menu` | buttons wala menu (Vercel webhook ke saath) |
 | `/ai <sawal>` | AI se bot ke baare mein poocho (Vercel + NVIDIA key ke saath). Ya seedha koi bhi message likh do |
@@ -54,7 +59,7 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 - `/start`, `/help`, `/id`, `/menu`, **`/status`, `/sites`** → **turant** jawab. Status live hota hai: GitHub repo se seedha padha jaata hai (state.json + abhi kaunsa run chal raha hai).
 - `/get <link>`, `/addsite`, `/removesite`, `/sync`, `/retry` (ya unke buttons: 📥 Download link, ➕, 🗑, 🔄, 🔁) → turant "⏳ chal raha hai…", aur Vercel usi second GitHub run start karta hai. Run khatam hote hi **wahi ⏳ message result se badal jaata hai**. Nayi files channel mein aati hain.
 - ⏱ Asli test (28 Oct): command bhejne ke ~1 sec mein GitHub run bana, ~5 sec mein shuru hua, aur ~18 sec mein jawab aa gaya (chhota kaam). Download/upload wale kaam file size pe depend karte hain (test mein 12 MB APK ka download + upload ≈ 3-15 sec). Ek run chal raha ho toh agla uske baad shuru hota hai.
-- Koi bhi normal message (ya 🤖 Ask AI) → AI jawab deta hai, bot ke live status ke hisaab se (NVIDIA key daali ho toh). AI khud kuch add/delete nahi karta, sirf batata hai kaunsa command chalana hai.
+- Koi bhi normal message (ya 🤖 Ask AI) → AI jawab deta hai, bot ke live status ke hisaab se (NVIDIA key daali ho toh). AI khud kuch add/delete nahi karta, sirf batata hai kaunsa command chalana hai.\n- YouTube tracker commands bhi Vercel webhook se GitHub Actions par chalte hain. Playlist/channel links public feeds/pages se padhe jaate hain; har run mein default max 5 watch links ek-ek karke post hote hain. Badalne ke liye Actions variable `MAX_YOUTUBE_LINKS_PER_RUN` set karo. YouTube media download, DRM bypass ya protected course ripping is feature ka hissa nahi hai.
 - Agar pehle se koi sync chal raha hai, toh naya kaam uske baad line mein chalega (koi command kho nahi jaata).
 
 ⏰ **Webhook nahi laga toh:** bot har ghante ek baar jaagta hai (GitHub kabhi-kabhi 5-15 min late bhi karta hai), command ka jawab agle run pe aayega.
@@ -210,7 +215,7 @@ Ye secrets nahi daale toh badi files skip hongi aur `/status` mein "ruki hui" di
 ## Settings (optional)
 
 https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/variables/actions pe **Variables** bana sakte ho:
-- `SYNC_EVERY_MIN` — kitne minute mein sync ho (default `60`). Commands har run pe padhe jaate hain.
+- `SYNC_EVERY_MIN` — kitne minute mein sync ho (default `10`). Commands har run pe padhe jaate hain.\n- `MAX_YOUTUBE_LINKS_PER_RUN` — har tracked playlist/channel se per run max kitne public watch links post hon (default `5`).
 - `WEBHOOK_MODE` — `1` = webhook mode, `0` = polling. Khali chhodo, bot khud pata kar leta hai.
 - `MAX_FILES_PER_RUN` — ek run mein saari sites mila ke max files (default `15`). Baaki agle run mein.
 - `PARALLEL_DOWNLOADS` — ek saath kitni files download hon (default `4`). Telegram pe upload phir bhi line se, ek-ek karke (thoda gap, Telegram ki limit ka dhyan). Bahut saari videos jaldi chahiye toh ise aur `MAX_FILES_PER_RUN` / site limit badhao.
