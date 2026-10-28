@@ -442,6 +442,8 @@ def run_command(bot, state, text, chat_id, edit_message_id=None):
     arg = parts[1].strip() if len(parts) > 1 else ""
     if cmd == "/get":
         reply = cmd_get(bot, state, arg, os.environ.get("CHANNEL_ID"))
+    elif cmd == "/yt":
+        reply = cmd_yt(bot, arg, os.environ.get("CHANNEL_ID"))
     else:
         fn = COMMANDS.get(cmd)
         reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
