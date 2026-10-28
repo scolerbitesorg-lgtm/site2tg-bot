@@ -92,3 +92,50 @@ def test_setup_mode_tells_ids(monkeypatch, tmp_path):
     assert "42" in bot.msgs[0][1]
     assert "-1009876" in bot.msgs[1][1]
     assert st.load()["offset"] == 4
+
+
+def test_site_limit(monkeypatch, tmp_path):
+    monkeypatch.setattr(st, "STATE_FILE", str(tmp_path / "state.json"))
+    items = [Item(id=f"u:{i}", url=f"https://s/{i}.apk", filename=f"{i}.apk", caption="", size=10) for i in range(7)]
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+
+    def fake_download(item, folder):
+        p = os.path.join(folder, item.filename)
+        open(p, "wb").write(item.id.encode())
+        return p, 1
+
+    monkeypatch.setattr(m, "download", fake_download)
+    for k, v in {"BOT_TOKEN": "1:x", "CHANNEL_ID": "-100123", "OWNER_ID": "111"}.items():
+        monkeypatch.setenv(k, v)
+    bot = FakeBot([upd(1, "/addsite https://s.com 2")])
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert [f for _, f, _, _ in bot.sent] == ["0.apk", "1.apk"]      # only 2 per sync
+    s = st.load()
+    assert s["sites"][0]["limit"] == 2
+    s["last_sync"] = None
+    st.save(s)
+    bot.updates, bot.sent = [], []
+    m.main()
+    assert [f for _, f, _, _ in bot.sent] == ["2.apk", "3.apk"]      # next sync continues, no repeats
+
+
+def test_duplicate_content_posted_once(monkeypatch, tmp_path):
+    monkeypatch.setattr(st, "STATE_FILE", str(tmp_path / "state.json"))
+    items = [Item(id="u:a", url="https://s/latest.apk", filename="latest.apk", caption="", size=5),
+             Item(id="u:b", url="https://s/v52.apk", filename="v52.apk", caption="", size=5)]
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", items))
+
+    def fake_download(item, folder):
+        p = os.path.join(folder, item.filename)
+        open(p, "wb").write(b"same-bytes")
+        return p, 10
+
+    monkeypatch.setattr(m, "download", fake_download)
+    for k, v in {"BOT_TOKEN": "1:x", "CHANNEL_ID": "-100123", "OWNER_ID": "111"}.items():
+        monkeypatch.setenv(k, v)
+    bot = FakeBot([upd(1, "/addsite https://s.com")])
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert [f for _, f, _, _ in bot.sent] == ["latest.apk"]
+    assert st.load()["sent"]["https://s.com"] == ["u:a", "u:b"]

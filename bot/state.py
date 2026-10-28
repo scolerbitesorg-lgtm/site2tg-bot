@@ -9,6 +9,7 @@ DEFAULT = {
     "offset": 0,            # Telegram getUpdates offset
     "sites": [],            # [{url, adapter, added}]
     "sent": {},             # site url -> [item ids already in the channel]
+    "hashes": {},           # site url -> sha256 prefixes of files sent (skip exact duplicates)
     "big_pending": {},      # item id -> {site, name, size}  (too big, no userbot)
     "last_sync": None,
     "last_result": "",

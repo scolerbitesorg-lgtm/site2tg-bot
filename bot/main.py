@@ -4,6 +4,7 @@
    download each one to disk, post it to the channel, delete it
 3. save state.json (the workflow commits it)
 """
+import hashlib
 import os
 import shutil
 import sys
@@ -19,12 +20,13 @@ USERBOT_LIMIT = 2_000_000_000
 SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 60)
 MAX_FILES_PER_RUN = int(os.environ.get("MAX_FILES_PER_RUN") or 15)
 MAX_RUN_SECONDS = int(os.environ.get("MAX_RUN_MINUTES") or 40) * 60
+DEFAULT_SITE_LIMIT = 3  # max new files per site per sync (change per site: /addsite <url> <limit>)
 MAX_TRIES = 3  # after 3 failed tries a file is skipped (use /retry to try again)
 START = time.time()
 
 HELP = """🤖 site2tg-bot commands
 
-/addsite <url> — nayi website jodo
+/addsite <url> [limit] — nayi website jodo (limit = ek sync mein max nayi files, default 3)
 /removesite <url> — website hatao
 /sites — saari websites ki list
 /sync — abhi sync karo (agle run pe)
@@ -56,22 +58,32 @@ def valid_url(u: str) -> bool:
 
 def cmd_addsite(state, arg):
     if not arg:
-        return "Aise likho: /addsite https://meri-site.com"
-    url = norm_url(arg)
+        return "Aise likho: /addsite https://meri-site.com 3\n(3 = ek sync mein max kitni nayi files, optional, default 3)"
+    parts = arg.split()
+    url = norm_url(parts[0])
+    limit = DEFAULT_SITE_LIMIT
+    if len(parts) > 1:
+        if not parts[1].isdigit() or int(parts[1]) < 1:
+            return "Limit ek number hona chahiye, jaise: /addsite https://meri-site.com 5"
+        limit = int(parts[1])
     if not valid_url(url):
         return "Ye URL sahi nahi lag raha."
-    if any(s["url"] == url for s in state["sites"]):
-        return "Ye site pehle se list mein hai."
+    for s in state["sites"]:
+        if s["url"] == url:
+            if len(parts) > 1:
+                s["limit"] = limit
+                return f"Ye site pehle se hai. Limit ab {limit} files per sync kar di."
+            return "Ye site pehle se list mein hai."
     try:
         name, items = adapters.list_items(url)
     except Exception as e:
         return f"Site khul nahi rahi: {redact(e)}"
-    state["sites"].append({"url": url, "adapter": name, "added": now_iso()})
+    state["sites"].append({"url": url, "adapter": name, "added": now_iso(), "limit": limit})
     state["sent"].setdefault(url, [])
     state["sync_requested"] = True
     kind = "video catalog site" if name == "tgvideo" else "normal page (direct file links)"
     return (f"✅ Site jod di: {url}\nType: {kind}\nAbhi {len(items)} files mili. "
-            f"Sync isi run mein shuru ho raha hai.")
+            f"Har sync mein max {limit} nayi files jayengi. Sync isi run mein shuru ho raha hai.")
 
 
 def cmd_removesite(state, arg):
@@ -81,6 +93,7 @@ def cmd_removesite(state, arg):
     if len(state["sites"]) == before:
         return "Ye site list mein nahi mili. /sites se exact URL dekho."
     state["sent"].pop(url, None)
+    state["hashes"].pop(url, None)
     state["big_pending"] = {k: v for k, v in state["big_pending"].items() if v.get("site") != url}
     # ids of this site's items in "fails" are harmless; they are cleared on /retry
     return f"🗑 Hata di: {url}"
@@ -89,7 +102,8 @@ def cmd_removesite(state, arg):
 def cmd_sites(state, _):
     if not state["sites"]:
         return "Abhi koi site nahi hai. /addsite <url> se jodo."
-    lines = [f"{i}. {s['url']} ({s['adapter']}) — {len(state['sent'].get(s['url'], []))} files bheji"
+    lines = [f"{i}. {s['url']} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync) — "
+             f"{len(state['sent'].get(s['url'], []))} files bheji"
              for i, s in enumerate(state["sites"], 1)]
     return "🌐 Websites:\n" + "\n".join(lines)
 
@@ -193,6 +207,14 @@ def download(item, folder):
     return path, size
 
 
+def file_hash(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:20]
+
+
 def remote_size(item):
     if item.size:
         return int(item.size)
@@ -212,6 +234,8 @@ def sync(bot, state, channel_id):
         for site in list(state["sites"]):
             url = site["url"]
             done = set(state["sent"].setdefault(url, []))
+            site_limit = int(site.get("limit") or DEFAULT_SITE_LIMIT)
+            site_sent = 0
             try:
                 name, items = adapters.list_items(url, site.get("adapter"))
             except Exception as e:
@@ -223,6 +247,8 @@ def sync(bot, state, channel_id):
                     continue
                 if state["fails"].get(item.id, 0) >= MAX_TRIES:
                     continue  # gave up on this file; shown in /status
+                if site_sent >= site_limit:
+                    break  # rest of this site's new files go in later syncs
                 if sent_now >= MAX_FILES_PER_RUN or time.time() - START > MAX_RUN_SECONDS:
                     state["sync_requested"] = True  # continue on next run
                     break
@@ -237,6 +263,13 @@ def sync(bot, state, channel_id):
                 try:
                     path, real = download(item, tmp)
                     log(f"downloaded {item.filename} ({human_size(real)})")
+                    digest = file_hash(path)
+                    hashes = state["hashes"].setdefault(url, [])
+                    if digest in hashes:  # same file under another link: don't post twice
+                        state["sent"][url].append(item.id)
+                        done.add(item.id)
+                        log(f"duplicate of an already sent file, skipped: {item.filename}")
+                        continue
                     if real <= BOT_UPLOAD_LIMIT:
                         bot.send_file(channel_id, path, item.filename, item.caption, item.kind)
                     elif has_userbot:
@@ -246,11 +279,13 @@ def sync(bot, state, channel_id):
                         big_now += 1
                         continue
                     state["sent"][url].append(item.id)
+                    hashes.append(digest)
                     done.add(item.id)
                     state["big_pending"].pop(item.id, None)
                     state["fails"].pop(item.id, None)
                     state["files_sent_total"] = state.get("files_sent_total", 0) + 1
                     sent_now += 1
+                    site_sent += 1
                     log(f"sent {item.filename}")
                 except Exception as e:
                     failed += 1

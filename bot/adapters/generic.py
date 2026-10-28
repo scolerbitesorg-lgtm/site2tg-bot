@@ -6,14 +6,16 @@ from urllib.parse import urljoin, urlparse, unquote, urldefrag
 from .base import Item
 from ..util import http, safe_name
 
+# file types the bot picks up (page icons/screenshots/logs are deliberately not included)
 EXTS = {
     ".apk", ".apks", ".xapk", ".aab",
     ".mp4", ".mkv", ".webm", ".mov", ".avi", ".3gp",
     ".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac",
-    ".pdf", ".zip", ".rar", ".7z", ".tar", ".gz",
-    ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".epub",
-    ".jpg", ".jpeg", ".png", ".gif", ".webp",
+    ".pdf", ".zip", ".rar", ".7z",
+    ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".epub",
 }
+# only these tags count as "a file on the page" (not <img>, <link rel=icon>, <script>)
+FILE_TAGS = {"a", "video", "audio", "source", "embed", "object", "iframe", "button", "div", "span", "li"}
 VIDEO_EXTS = {".mp4", ".mov", ".webm", ".mkv"}
 
 
@@ -23,6 +25,8 @@ class _LinkParser(HTMLParser):
         self.links = []
 
     def handle_starttag(self, tag, attrs):
+        if tag not in FILE_TAGS:
+            return
         for k, v in attrs:
             if k in ("href", "src", "data-src", "data-href", "data-url") and v:
                 self.links.append(v.strip())

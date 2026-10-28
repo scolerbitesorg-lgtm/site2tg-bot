@@ -3,17 +3,20 @@
  "errors": [],
  "fails": {},
  "files_sent_total": 0,
+ "hashes": {},
  "last_result": "",
  "last_sync": null,
  "offset": 0,
  "sent": {
-  "https://videoclasses.vercel.app/": []
+  "https://f-droid.org/en/packages/org.fdroid.fdroid/": []
  },
  "sites": [
   {
-   "adapter": "tgvideo",
-   "added": "2026-10-28T08:10:00Z",
-   "url": "https://videoclasses.vercel.app/"
+   "adapter": "generic",
+   "added": "2026-10-28T08:20:00Z",
+   "demo": true,
+   "limit": 3,
+   "url": "https://f-droid.org/en/packages/org.fdroid.fdroid/"
   }
  ],
  "sync_requested": true

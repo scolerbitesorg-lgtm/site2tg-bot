@@ -12,15 +12,27 @@ Sab kuch GitHub ke free server (GitHub Actions) pe chalta hai, **aapke phone ka 
 
 **Website types:**
 1. **Video site** (jaise https://videoclasses.vercel.app/) — bot khud pehchaan leta hai, saari videos caption ke saath bhejta hai: `Course · Folder · Title`
-2. **Normal page** — page pe jitne direct file links hain (`.apk .mp4 .mkv .pdf .zip .mp3` etc.), sab bhej deta hai
+2. **Normal page** — page pe jitne direct file links hain (`.apk .mp4 .mkv .pdf .zip .mp3 .epub` etc.), sab bhej deta hai. Page ke icons/screenshots/log files nahi bhejta.
 
-`https://videoclasses.vercel.app/` pehle se list mein daal di hai. Setup poora hote hi pehla run uski 4 videos channel mein bhej dega.
+Ek hi file do alag links pe ho (jaise `latest.apk` aur `v52.apk` same file), toh channel mein ek hi baar jaayegi.
+
+### 🧪 Demo site (pehle se daali hui)
+
+Abhi aapki apni sites ready nahi hain, isliye bot mein ek **demo site** pehle se daali hai:
+**F-Droid ka page** — https://f-droid.org/en/packages/org.fdroid.fdroid/ (free/open-source app store, iske APK share karna legal hai).
+Setup hote hi bot is page se APK utha ke channel mein bhejega, **har sync mein max 3**, taaki pata chal jaye sab kaam kar raha hai. (Is page pe ~12 APK hain, toh sab aane mein ~4 sync lagenge.)
+
+Apni site ready ho jaye toh:
+- `/addsite https://aapki-site.com` — apni site jodo
+- `/removesite https://f-droid.org/en/packages/org.fdroid.fdroid/` — demo hatao
+
+Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (bot khud pehchaan lega ki ye video catalog wali site hai).
 
 ## Commands (Telegram pe bot ko bhejo)
 
 | Command | Kaam |
 |---|---|
-| `/addsite <url>` | nayi website jodo |
+| `/addsite <url> [limit]` | nayi website jodo. `limit` = ek sync mein max kitni nayi files (default 3). Pehle se judi site pe dobara bhejo toh limit badal jaati hai |
 | `/removesite <url>` | website hatao |
 | `/sites` | saari websites |
 | `/sync` | abhi sync karo |
@@ -71,7 +83,7 @@ Wahi secrets page (https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/s
 
 ### Step 6: Chalu karo
 - https://github.com/scolerbitesorg-lgtm/site2tg-bot/actions kholo. Agar "enable workflows" jaisa button dikhe toh daba do.
-- **Run workflow** dabao. Videos channel mein aane lagengi ✅
+- **Run workflow** dabao. Demo site ke APK channel mein aane lagenge ✅
 - Iske baad ye apne aap har ~30 min pe chalega.
 
 ---
@@ -106,7 +118,8 @@ Ye secrets nahi daale toh badi files skip hongi aur `/status` mein "ruki hui" di
 
 https://github.com/scolerbitesorg-lgtm/site2tg-bot/settings/variables/actions pe **Variables** bana sakte ho:
 - `SYNC_EVERY_MIN` — kitne minute mein sync ho (default `60`). Commands har run pe padhe jaate hain.
-- `MAX_FILES_PER_RUN` — ek run mein max files (default `15`). Baaki agle run mein.
+- `MAX_FILES_PER_RUN` — ek run mein saari sites mila ke max files (default `15`). Baaki agle run mein.
+- Har site ki apni limit `/addsite <url> <limit>` se badlo.
 
 Run ka time badalna ho toh `.github/workflows/bot.yml` mein `cron: "*/30 * * * *"` badlo.
 

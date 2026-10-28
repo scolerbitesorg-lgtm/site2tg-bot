@@ -58,7 +58,8 @@ def test_generic_links():
     <a href="/about.html">about</a>
     <a href="javascript:void(0)">x</a>
     <a href="/apps/My%20App.apk">dup</a>
-    <img data-src="//img.example.com/p.pdf">
+    <a data-url="//img.example.com/p.pdf">pdf</a>
+    <img src="/shot.png"><link rel="icon" href="/fav.png"><a href="/x.log.gz">log</a>
     """
     items = generic.items_from_html(html, "https://mysite.com/files/")
     urls = [i.url for i in items]
@@ -79,3 +80,17 @@ def test_redact_hides_secrets(monkeypatch):
     assert "secret" not in s
     s2 = redact("bad https://x.com/v/1/2?t=SIGNEDTOKEN here")
     assert "SIGNEDTOKEN" not in s2
+
+
+def test_fdroid_style_page():
+    html = """
+    <link rel="apple-touch-icon" href="/assets/icon.png">
+    <a href="https://f-droid.org/F-Droid.apk">Download</a>
+    <a href="https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk">apk</a>
+    <a href="https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk.asc">sig</a>
+    <a href="https://f-droid.org/repo/org.fdroid.fdroid_2000052_src.tar.gz">src</a>
+    <a href="https://f-droid.org/repo/org.fdroid.fdroid_2000052.log.gz">log</a>
+    <img src="https://f-droid.org/repo/org.fdroid.fdroid/en-US/phoneScreenshots/01-latest.png">
+    """
+    urls = [i.url for i in generic.items_from_html(html, "https://f-droid.org/en/packages/org.fdroid.fdroid/")]
+    assert urls == ["https://f-droid.org/F-Droid.apk", "https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk"]
