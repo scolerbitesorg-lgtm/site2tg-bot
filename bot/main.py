@@ -240,6 +240,7 @@ def handle_updates(bot, state, owner_id):
         if str(sender) != str(owner_id):
             log("ignored command from non-owner user")
             continue
+        log(f"command: {text.split()[0]}")
         run_command(bot, state, text, msg["chat"]["id"])
 
 

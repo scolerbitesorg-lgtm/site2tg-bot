@@ -37,6 +37,11 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          # latest tip of the branch, not the commit the run was queued on:
+          # runs wait in line (queue: max), and each must see the state.json
+          # the previous run pushed (else old commands get answered twice)
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
@@ -73,6 +78,9 @@ jobs:
             echo "state unchanged"
           else
             git commit -m "state: update [skip ci]"
-            git pull --rebase --autostash || true
-            git push
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              git rebase --abort 2>/dev/null || true
+              echo "push failed, retrying ($i)"; sleep 5
+            done
           fi
