@@ -25,7 +25,7 @@ from .util import http, human_size, ist, now_iso, parse_iso, redact, safe_name
 from .security import safe_request, validate_url_shape
 
 USERBOT_LIMIT = 2_000_000_000
-SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 60)
+SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 10)
 MAX_FILES_PER_RUN = int(os.environ.get("MAX_FILES_PER_RUN") or 15)
 MAX_RUN_SECONDS = int(os.environ.get("MAX_RUN_MINUTES") or 40) * 60
 DEFAULT_SITE_LIMIT = 3  # max new files per site per sync (change per site: /addsite <url> <limit>)
