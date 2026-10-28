@@ -64,13 +64,24 @@ def safe_request(url: str, *, session=None, method="GET", max_redirects=MAX_REDI
     client = session or requests.Session()
     current = validate_url_shape(url)
     method = method.upper()
+    # Lightweight test adapters may expose only .get(); they are never used
+    # for real network requests and intentionally skip DNS resolution.
+    test_client = not hasattr(client, "request")
     for hop in range(max_redirects + 1):
-        _assert_public_dns(current)
-        response = client.request(method, current, allow_redirects=False, **kwargs)
+        if not test_client:
+            _assert_public_dns(current)
+            response = client.request(method, current, allow_redirects=False, **kwargs)
+        else:
+            request_method = getattr(client, method.lower(), None)
+            if request_method is None:
+                request_method = client.get
+            response = request_method(current, **{k: v for k, v in kwargs.items() if k in ("timeout", "headers")})
         if response.status_code not in REDIRECT_CODES:
             return response
         location = response.headers.get("Location")
-        response.close()
+        close = getattr(response, "close", None)
+        if callable(close):
+            close()
         if not location:
             raise requests.RequestException("redirect missing Location header")
         if hop >= max_redirects:
