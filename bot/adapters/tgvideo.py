@@ -28,6 +28,42 @@ def catalog_url_from_html(html: str) -> str:
     return m.group(0) if m else "https://tgvideo.sites.tab.bot/api/catalog"
 
 
+CHILD_KEYS = ("folders", "subfolders", "children", "topics", "subjects", "chapters",
+              "lectures", "sections", "modules", "items")
+MAX_DEPTH = 20
+
+
+def _walk(node, path, cid, depth, out, stream, referer):
+    """Collect videos from a catalog node and all nested child lists, any depth
+    (course → topic → subject → lecture → videos …). Caption = full path · title."""
+    if depth > MAX_DEPTH or not isinstance(node, dict):
+        return
+    cid = node.get("cid", cid)
+    for v in node.get("videos") or []:
+        if not isinstance(v, dict):
+            continue
+        msg = v.get("msg")
+        vcid = v.get("cid", cid)
+        if vcid is None or msg is None:
+            continue
+        title = v.get("title") or f"video {msg}"
+        url = f"{stream}/v/{vcid}/{msg}?t={quote(str(v.get('t') or ''), safe='')}"
+        out.append(Item(
+            id=f"tgvideo:{vcid}:{msg}",
+            url=url,
+            filename=safe_name(title, f"video_{msg}") + ".mp4",
+            caption=" · ".join(x for x in (*path, title) if x),
+            size=v.get("size"),
+            headers={"Referer": referer},
+            kind="video",
+        ))
+    for key in CHILD_KEYS:
+        for child in node.get(key) or []:
+            if isinstance(child, dict):
+                name = child.get("name") or child.get("title") or ""
+                _walk(child, path + [name], cid, depth + 1, out, stream, referer)
+
+
 def items_from_catalog(data: dict, referer: str, include_test: bool = False):
     stream = (data.get("stream") or "https://tgvideo-stream.sites.tab.bot").rstrip("/")
     cat = data.get("catalog") or {}
@@ -35,26 +71,13 @@ def items_from_catalog(data: dict, referer: str, include_test: bool = False):
     for course in cat.get("courses", []):
         if course.get("test") and not include_test:
             continue
-        cid = course.get("cid")
-        cname = course.get("name", "")
-        for folder in course.get("folders", []):
-            fname = folder.get("name", "")
-            for v in folder.get("videos", []):
-                msg = v.get("msg")
-                if cid is None or msg is None:
-                    continue
-                title = v.get("title") or f"video {msg}"
-                url = f"{stream}/v/{cid}/{msg}?t={quote(str(v.get('t') or ''), safe='')}"
-                out.append(Item(
-                    id=f"tgvideo:{cid}:{msg}",
-                    url=url,
-                    filename=safe_name(title, f"video_{msg}") + ".mp4",
-                    caption=" · ".join(x for x in (cname, fname, title) if x),
-                    size=v.get("size"),
-                    headers={"Referer": referer},
-                    kind="video",
-                ))
-    return out
+        _walk(course, [course.get("name", "")], course.get("cid"), 0, out, stream, referer)
+    seen, unique = set(), []
+    for it in out:  # same video listed in two places: once
+        if it.id not in seen:
+            seen.add(it.id)
+            unique.append(it)
+    return unique
 
 
 def list_items(site_url: str, html: str = None):

@@ -12,7 +12,7 @@ Sab kuch free servers pe chalta hai (GitHub Actions + Vercel), **aapke phone ka 
 - Jo file ek baar bhej di, wo dobara nahi bhejega (`state.json` mein yaad rakhta hai)
 
 **Website types:**
-1. **Video site** (jaise https://videoclasses.vercel.app/) — bot khud pehchaan leta hai, saari videos caption ke saath bhejta hai: `Course · Folder · Title`
+1. **Video site** (jaise https://videoclasses.vercel.app/) — bot khud pehchaan leta hai, saari videos caption ke saath bhejta hai: `Course · Folder · Title`. Folders kitne bhi andar hon (Course → Topic → Subject → Lecture → videos), sab milte hain aur caption mein poora raasta aata hai: `Course · Topic · Subject · Lecture · Title`
 2. **Normal page** — page pe jitne direct file links hain (`.apk .mp4 .mkv .pdf .zip .mp3 .epub` etc.), sab bhej deta hai. Page ke icons/screenshots/log files nahi bhejta.
 
 Ek hi file do alag links pe ho (jaise `latest.apk` aur `v52.apk` same file), ya do sites pe same file ho, toh channel mein ek hi baar jaayegi.

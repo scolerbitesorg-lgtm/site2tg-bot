@@ -94,3 +94,38 @@ def test_fdroid_style_page():
     """
     urls = [i.url for i in generic.items_from_html(html, "https://f-droid.org/en/packages/org.fdroid.fdroid/")]
     assert urls == ["https://f-droid.org/F-Droid.apk", "https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk"]
+
+
+def test_tgvideo_nested_catalog_any_depth():
+    data = {
+        "stream": "https://tgvideo-stream.sites.tab.bot",
+        "catalog": {"courses": [{
+            "cid": 99, "name": "Physics",
+            "folders": [{"name": "Mechanics",
+                         "subfolders": [{"name": "Kinematics",
+                                         "children": [{"name": "Lecture 1",
+                                                       "videos": [{"id": "a", "title": "Intro", "msg": 11, "t": "x y"},
+                                                                  {"id": "b", "title": "Graphs", "msg": 12, "t": "z"}]}],
+                                         "videos": [{"title": "Notes video", "msg": 10, "t": "q"}]}]}],
+            "videos": [{"title": "Welcome", "msg": 1, "t": "w"}],
+        }, {"cid": 5, "name": "Test", "test": True, "folders": [{"name": "f", "videos": [{"title": "t", "msg": 2}]}]}]},
+    }
+    items = tgvideo.items_from_catalog(data, "https://videoclasses.vercel.app/")
+    caps = {i.id: i.caption for i in items}
+    assert caps == {
+        "tgvideo:99:1": "Physics · Welcome",
+        "tgvideo:99:10": "Physics · Mechanics · Kinematics · Notes video",
+        "tgvideo:99:11": "Physics · Mechanics · Kinematics · Lecture 1 · Intro",
+        "tgvideo:99:12": "Physics · Mechanics · Kinematics · Lecture 1 · Graphs",
+    }
+    intro = [i for i in items if i.id == "tgvideo:99:11"][0]
+    assert intro.url == "https://tgvideo-stream.sites.tab.bot/v/99/11?t=x%20y"
+    assert intro.headers == {"Referer": "https://videoclasses.vercel.app/"} and intro.kind == "video"
+
+
+def test_tgvideo_cycle_and_duplicates_are_safe():
+    node = {"name": "loop", "videos": [{"title": "v", "msg": 3}]}
+    node["folders"] = [node]          # a self-reference must not hang
+    data = {"catalog": {"courses": [{"cid": 1, "name": "C", "folders": [node]}]}}
+    items = tgvideo.items_from_catalog(data, "https://x/")
+    assert [i.id for i in items] == ["tgvideo:1:3"]
