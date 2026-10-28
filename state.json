@@ -2,17 +2,18 @@
  "big_pending": {},
  "errors": [],
  "fails": {},
- "files_sent_total": 16,
+ "files_sent_total": 17,
  "hashes": {
   "https://videoclasses.vercel.app/": [
    "24052c3f1e5c0ac5bc4f",
    "96d73d6b471fc4af707a",
    "a39a9bd99486dada2267",
-   "91666cf3e5a1e91aae99"
+   "91666cf3e5a1e91aae99",
+   "4dec00137ff73b4c4e46"
   ]
  },
- "last_result": "0 bheji, 0 fail, 0 badi files ruki",
- "last_sync": "2026-10-28T12:54:43Z",
+ "last_result": "1 bheji, 0 fail, 0 badi files ruki (files: 1, YouTube links: 0)",
+ "last_sync": "2026-10-28T14:20:05Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
@@ -21,7 +22,8 @@
    "tgvideo:3723101547:4",
    "tgvideo:3723101547:5",
    "tgvideo:3723101547:6",
-   "tgvideo:3723101547:14"
+   "tgvideo:3723101547:14",
+   "tgvideo:3723101547:15"
   ]
  },
  "sites": [
@@ -39,5 +41,8 @@
    "url": "https://spidyiq.vercel.app/course/9854/English"
   }
  ],
- "sync_requested": false
+ "sync_requested": false,
+ "youtube_pending": {},
+ "youtube_seen": {},
+ "youtube_sources": []
 }
