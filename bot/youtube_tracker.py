@@ -108,6 +108,8 @@ def fetch_entries(source):
     except Exception:
         if source["kind"] != "playlist":
             raise
+        entries = []
+    if source["kind"] == "playlist" and not entries:
         r = safe_request(source["url"], session=http(), timeout=25,
                          headers={"Accept-Language": "en-US,en;q=0.8"})
         if r.status_code != 200:
