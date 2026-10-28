@@ -171,3 +171,67 @@ def test_failed_edit_falls_back_to_new_message(monkeypatch, tmp_path):
     monkeypatch.setattr(m, "Bot", lambda token: bot)
     m.main()
     assert len(bot.msgs) == 1 and not bot.msgs[0][1].startswith("EDIT")
+
+
+def test_same_site_typed_differently_is_not_added_twice(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path)
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("tgvideo", []))
+    s = st.load()
+    for u in ("https://videoclasses.vercel.app/", "videoclasses.vercel.app", "http://www.VideoClasses.vercel.app"):
+        reply = m.cmd_addsite(s, u)
+    assert len(s["sites"]) == 1
+    assert "pehle se" in reply
+    assert m.site_key("https://x.com/a/") == m.site_key("x.com/a") == m.site_key("http://www.X.com/a")
+    assert m.site_key("https://x.com/a") != m.site_key("https://x.com/b")
+    assert "Hata di" in m.cmd_removesite(s, "videoclasses.vercel.app")   # no exact slash needed
+    assert s["sites"] == []
+
+
+def test_old_duplicate_entries_are_merged_and_nothing_is_posted_twice(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path)
+    s = st.load()
+    s["sites"] = [{"url": "https://v.app/", "adapter": "tgvideo", "added": "x", "limit": 5},
+                  {"url": "https://v.app", "adapter": "tgvideo", "added": "y", "limit": 5}]
+    s["sent"] = {"https://v.app/": ["tgvideo:1:4"], "https://v.app": ["tgvideo:1:5"]}
+    s["hashes"] = {"https://v.app/": ["h4"], "https://v.app": ["h5"]}
+    s["last_sync"] = None
+    st.save(s)
+    items = [Item(id=f"tgvideo:1:{i}", url=f"https://s/{i}.mp4", filename=f"{i}.mp4", caption="", size=10, kind="video")
+             for i in (4, 5, 6)]
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("tgvideo", items))
+
+    def fake_download(it, folder):
+        p = os.path.join(folder, it.filename)
+        open(p, "wb").write(it.id.encode())
+        return p, 1
+
+    monkeypatch.setattr(m, "download", fake_download)
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    s = st.load()
+    assert [x["url"] for x in s["sites"]] == ["https://v.app/"]
+    assert sorted(s["sent"]["https://v.app/"]) == ["tgvideo:1:4", "tgvideo:1:5", "tgvideo:1:6"]
+    assert [f for _, f in bot.sent] == ["6.mp4"]                      # only the new one, once
+
+
+def test_same_file_listed_by_two_different_sites_goes_once(monkeypatch, tmp_path):
+    _env(monkeypatch, tmp_path)
+    s = st.load()
+    s["sites"] = [{"url": "https://a.com", "adapter": "generic", "added": "x", "limit": 5},
+                  {"url": "https://b.com", "adapter": "generic", "added": "x", "limit": 5}]
+    s["sent"] = {"https://a.com": [], "https://b.com": []}
+    st.save(s)
+    same = Item(id="url:https://cdn/app.apk", url="https://cdn/app.apk", filename="app.apk", caption="", size=10)
+    monkeypatch.setattr(m.adapters, "list_items", lambda url, adapter=None: ("generic", [same]))
+
+    def fake_download(it, folder):
+        p = os.path.join(folder, it.filename)
+        open(p, "wb").write(b"apk")
+        return p, 3
+
+    monkeypatch.setattr(m, "download", fake_download)
+    bot = HookBot()
+    monkeypatch.setattr(m, "Bot", lambda token: bot)
+    m.main()
+    assert [f for _, f in bot.sent] == ["app.apk"]

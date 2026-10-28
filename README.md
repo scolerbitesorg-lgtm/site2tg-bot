@@ -15,7 +15,8 @@ Sab kuch free servers pe chalta hai (GitHub Actions + Vercel), **aapke phone ka 
 1. **Video site** (jaise https://videoclasses.vercel.app/) — bot khud pehchaan leta hai, saari videos caption ke saath bhejta hai: `Course · Folder · Title`
 2. **Normal page** — page pe jitne direct file links hain (`.apk .mp4 .mkv .pdf .zip .mp3 .epub` etc.), sab bhej deta hai. Page ke icons/screenshots/log files nahi bhejta.
 
-Ek hi file do alag links pe ho (jaise `latest.apk` aur `v52.apk` same file), toh channel mein ek hi baar jaayegi.
+Ek hi file do alag links pe ho (jaise `latest.apk` aur `v52.apk` same file), ya do sites pe same file ho, toh channel mein ek hi baar jaayegi.
+Same site do baar nahi judti: `https://site.com/`, `site.com`, `http://www.site.com` sab ek hi maane jaate hain.
 
 ### 🧪 Demo site (pehle se daali hui)
 

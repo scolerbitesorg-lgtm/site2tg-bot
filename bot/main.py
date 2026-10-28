@@ -54,6 +54,48 @@ def norm_url(u: str) -> str:
     return u
 
 
+def site_key(u: str) -> str:
+    """Same site, however it was typed: http/https, www., trailing slash and
+    host case don't matter (https://x.com/a/ == x.com/a == http://www.X.com/a)."""
+    p = urlparse(norm_url(u))
+    host = p.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    path = p.path.rstrip("/")
+    return host + path + (("?" + p.query) if p.query else "")
+
+
+def find_site(state, url):
+    key = site_key(url)
+    for s in state["sites"]:
+        if site_key(s["url"]) == key:
+            return s
+    return None
+
+
+def dedupe_sites(state):
+    """Merge site entries that are the same site (older state could hold
+    https://x.com/ and https://x.com both, which sent every file twice)."""
+    seen, keep = {}, []
+    for s in state["sites"]:
+        k = site_key(s["url"])
+        if k not in seen:
+            seen[k] = s
+            keep.append(s)
+            continue
+        first = seen[k]["url"]
+        for field in ("sent", "hashes"):
+            merged = state[field].setdefault(first, [])
+            for v in state[field].pop(s["url"], []):
+                if v not in merged:
+                    merged.append(v)
+        for v in state["big_pending"].values():
+            if v.get("site") == s["url"]:
+                v["site"] = first
+        log(f"merged duplicate site entry: {s['url']} -> {first}")
+    state["sites"] = keep
+
+
 def valid_url(u: str) -> bool:
     p = urlparse(u)
     return p.scheme in ("http", "https") and "." in p.netloc
@@ -73,12 +115,12 @@ def cmd_addsite(state, arg):
         limit = int(parts[1])
     if not valid_url(url):
         return "Ye URL sahi nahi lag raha."
-    for s in state["sites"]:
-        if s["url"] == url:
-            if len(parts) > 1:
-                s["limit"] = limit
-                return f"Ye site pehle se hai. Limit ab {limit} files per sync kar di."
-            return "Ye site pehle se list mein hai."
+    s = find_site(state, url)
+    if s:
+        if len(parts) > 1:
+            s["limit"] = limit
+            return f"Ye site pehle se hai ({s['url']}). Limit ab {limit} files per sync kar di."
+        return f"Ye site pehle se list mein hai: {s['url']}"
     try:
         name, items = adapters.list_items(url)
     except Exception as e:
@@ -92,11 +134,11 @@ def cmd_addsite(state, arg):
 
 
 def cmd_removesite(state, arg):
-    url = norm_url(arg) if arg else ""
-    before = len(state["sites"])
-    state["sites"] = [s for s in state["sites"] if s["url"] != url]
-    if len(state["sites"]) == before:
-        return "Ye site list mein nahi mili. /sites se exact URL dekho."
+    site = find_site(state, arg) if arg else None
+    if not site:
+        return "Ye site list mein nahi mili. /sites se URL dekho."
+    url = site["url"]
+    state["sites"] = [s for s in state["sites"] if s is not site]
     state["sent"].pop(url, None)
     state["hashes"].pop(url, None)
     state["big_pending"] = {k: v for k, v in state["big_pending"].items() if v.get("site") != url}
@@ -276,6 +318,9 @@ def remote_size(item):
 def sync(bot, state, channel_id):
     sent_now, failed, big_now = 0, 0, 0
     has_userbot = userbot.available()
+    # never post the same file twice, even if two site entries list it
+    all_ids = {i for ids in state["sent"].values() for i in ids}
+    all_hashes = {h for hs in state["hashes"].values() for h in hs}
     tmp = tempfile.mkdtemp(prefix="site2tg-")
     try:
         for site in list(state["sites"]):
@@ -291,6 +336,10 @@ def sync(bot, state, channel_id):
                 continue
             for item in items:
                 if item.id in done:
+                    continue
+                if item.id in all_ids:  # already posted for another site entry
+                    state["sent"][url].append(item.id)
+                    done.add(item.id)
                     continue
                 if state["fails"].get(item.id, 0) >= MAX_TRIES:
                     continue  # gave up on this file; shown in /status
@@ -312,7 +361,7 @@ def sync(bot, state, channel_id):
                     log(f"downloaded {item.filename} ({human_size(real)})")
                     digest = file_hash(path)
                     hashes = state["hashes"].setdefault(url, [])
-                    if digest in hashes:  # same file under another link: don't post twice
+                    if digest in hashes or digest in all_hashes:  # same file under another link: don't post twice
                         state["sent"][url].append(item.id)
                         done.add(item.id)
                         log(f"duplicate of an already sent file, skipped: {item.filename}")
@@ -328,6 +377,8 @@ def sync(bot, state, channel_id):
                     state["sent"][url].append(item.id)
                     hashes.append(digest)
                     done.add(item.id)
+                    all_ids.add(item.id)
+                    all_hashes.add(digest)
                     state["big_pending"].pop(item.id, None)
                     state["fails"].pop(item.id, None)
                     state["files_sent_total"] = state.get("files_sent_total", 0) + 1
@@ -412,6 +463,7 @@ def main():
         return 0
     bot = Bot(token)
     state = st.load()
+    dedupe_sites(state)
     try:
         if webhook_active(bot):
             log("webhook mode: not polling getUpdates")
