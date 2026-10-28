@@ -43,7 +43,12 @@ Video site bhi aise hi jud jayegi: `/addsite https://videoclasses.vercel.app/` (
 | `/sync` | abhi sync karo |
 | `/status` | kitni files gayi, last sync, errors, ruki hui badi files |
 | `/retry` | jo files 3 baar fail hui, unhe dobara try karo |
-| `/get <link>` | ek **authorized direct file link** (jaise `…/video.mp4`, `…/app.apk`, `…/notes.pdf`) download karke channel mein. YouTube watch links aur protected streams media-download ke liye supported nahi hain |\n| `/addplaylist <URL/ID>` | public YouTube playlist track karo; available watch links queue mein aayenge aur ek-ek karke channel par post honge |\n| `/addyoutube <URL/UC...>` | public YouTube channel ke naye uploads track karo |\n| `/youtubes` | tracked channel/playlist, posted links aur pending queue dekho |\n| `/removeyoutube <URL/ID>` | YouTube tracker hatao |\n| `/yt <video URL>` | ek YouTube watch link channel par post karo; video file download nahi hoti |
+| `/get <link>` | ek **authorized direct file link** (jaise `…/video.mp4`, `…/app.apk`, `…/notes.pdf`) download karke channel mein. YouTube watch links aur protected streams media-download ke liye supported nahi hain |
+| `/addplaylist <URL/ID>` | public YouTube playlist track karo; available watch links queue mein aayenge aur ek-ek karke channel par post honge |
+| `/addyoutube <URL/UC...>` | public YouTube channel ke naye uploads track karo |
+| `/youtubes` | tracked channel/playlist, posted links aur pending queue dekho |
+| `/removeyoutube <URL/ID>` | YouTube tracker hatao |
+| `/yt <video URL>` | ek YouTube watch link channel par post karo; video file download nahi hoti |
 | `/id` | aapka OWNER_ID aur CHANNEL_ID |
 | `/menu` | buttons wala menu (Vercel webhook ke saath) |
 | `/ai <sawal>` | AI se bot ke baare mein poocho (Vercel + NVIDIA key ke saath). Ya seedha koi bhi message likh do |
