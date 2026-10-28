@@ -4,10 +4,9 @@ run-name: ${{ inputs.command && format('cmd {0}', inputs.command) || 'site2tg-bo
 
 on:
   schedule:
-    # every hour (minute 17) for the scheduled sync. Commands don't wait for
-    # this when the Vercel webhook is on: it starts a run right away.
-    # Hourly keeps a PRIVATE repo well inside GitHub's free 2000 min/month.
-    - cron: "17 * * * *"
+    # Every 10 minutes. GitHub may delay scheduled jobs during busy periods.
+    # Monitor Actions minutes: usage depends on how long each scan takes.
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       command:

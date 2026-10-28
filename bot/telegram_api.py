@@ -19,22 +19,38 @@ class Bot:
 
     def call(self, method, data=None, files=None, timeout=60, tries=3):
         last = None
-        for _ in range(tries):
+        for attempt in range(max(1, tries)):
             try:
+                # requests consumes upload streams. Rewind them before every retry
+                # or a transient failure would send an empty file on the next try.
+                for entry in (files or {}).values():
+                    if isinstance(entry, (tuple, list)) and len(entry) >= 2:
+                        stream = entry[1]
+                        if hasattr(stream, "seek"):
+                            stream.seek(0)
                 r = self.s.post(self._base + method, data=data, files=files, timeout=timeout)
                 j = r.json()
-            except Exception as e:  # network error: never include the URL (has token)
-                last = TelegramError(f"{method}: network error {type(e).__name__}")
-                time.sleep(3)
-                continue
+            except Exception as e:  # never include the URL (it contains the token)
+                last = TelegramError(f"{method}: network/response error {type(e).__name__}")
+                if attempt + 1 < max(1, tries):
+                    time.sleep(min(2 ** attempt, 8))
+                    continue
+                break
             if j.get("ok"):
                 return j["result"]
             params = j.get("parameters") or {}
-            if j.get("error_code") == 429 and params.get("retry_after"):
-                time.sleep(min(int(params["retry_after"]) + 1, 60))
+            code = j.get("error_code") or getattr(r, "status_code", None)
+            if code == 429:
+                wait = params.get("retry_after", 2 ** attempt)
+                if attempt + 1 < max(1, tries):
+                    time.sleep(min(max(1, int(wait)), 60))
+                    continue
+            if isinstance(code, int) and code >= 500 and attempt + 1 < max(1, tries):
+                last = TelegramError(f"{method}: Telegram server error {code}")
+                time.sleep(min(2 ** attempt, 8))
                 continue
-            raise TelegramError(redact(f"{method}: {j.get('error_code')} {j.get('description')}"))
-        raise last or TelegramError(f"{method}: failed")
+            raise TelegramError(redact(f"{method}: {code} {j.get('description')}"))
+        raise last or TelegramError(f"{method}: failed after retries")
 
     def get_updates(self, offset):
         return self.call("getUpdates", {"offset": offset, "timeout": 0,
