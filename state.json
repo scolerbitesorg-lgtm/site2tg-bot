@@ -2,13 +2,24 @@
  "big_pending": {},
  "errors": [],
  "fails": {},
- "files_sent_total": 0,
- "hashes": {},
- "last_result": "",
- "last_sync": null,
- "offset": 959581371,
+ "files_sent_total": 3,
+ "hashes": {
+  "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
+   "19d51fad482239f6df6a",
+   "83d3fe522281c3cb89fc",
+   "94938d324b03755fb324"
+  ]
+ },
+ "last_result": "3 bheji, 0 fail, 0 badi files ruki",
+ "last_sync": "2026-10-28T08:32:00Z",
+ "offset": 959581372,
  "sent": {
-  "https://f-droid.org/en/packages/org.fdroid.fdroid/": []
+  "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
+   "url:https://f-droid.org/F-Droid.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000051.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000050.apk"
+  ]
  },
  "sites": [
   {
@@ -19,5 +30,5 @@
    "url": "https://f-droid.org/en/packages/org.fdroid.fdroid/"
   }
  ],
- "sync_requested": true
+ "sync_requested": false
 }
