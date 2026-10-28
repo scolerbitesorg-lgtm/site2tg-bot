@@ -119,7 +119,7 @@ def fetch_entries(source):
                              headers={"Accept-Language": "en-US,en;q=0.8"})
             if r.status_code != 200:
                 raise RuntimeError(f"YouTube playlist page HTTP {r.status_code}")
-            ids = list(dict.fromkeys(re.findall(r'"videoId"\\s*:\\s*"([A-Za-z0-9_-]{11})"', r.text)))
+            ids = list(dict.fromkeys(re.findall(r'"videoId"\s*:\\s*"([A-Za-z0-9_-]{11})"', r.text)))
             by_id = {entry["id"]: entry for entry in entries}
             for video_id in ids:
                 by_id.setdefault(video_id, {
