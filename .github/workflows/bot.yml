@@ -1,0 +1,55 @@
+name: site2tg-bot
+
+on:
+  schedule:
+    # every 30 minutes (keeps a PRIVATE repo inside GitHub's free 2000 min/month)
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site2tg-bot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          OWNER_ID: ${{ secrets.OWNER_ID }}
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          SESSION_STRING: ${{ secrets.SESSION_STRING }}
+          SYNC_EVERY_MIN: ${{ vars.SYNC_EVERY_MIN }}
+          MAX_FILES_PER_RUN: ${{ vars.MAX_FILES_PER_RUN }}
+        run: python -m bot.main
+
+      - name: Save state.json
+        if: always()
+        run: |
+          git config user.name "site2tg-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          if git diff --cached --quiet; then
+            echo "state unchanged"
+          else
+            git commit -m "state: update [skip ci]"
+            git pull --rebase --autostash || true
+            git push
+          fi
