@@ -4,17 +4,6 @@
  "fails": {},
  "files_sent_total": 16,
  "hashes": {
-  "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
-   "19d51fad482239f6df6a",
-   "83d3fe522281c3cb89fc",
-   "94938d324b03755fb324",
-   "36b343514ea2cdd353b7",
-   "cd492ba2d5a425ad80aa",
-   "730f81f2cf860b267141",
-   "0b6c65becb0712828625",
-   "d6e5eaea63107aed8e46",
-   "72e139a04fcd0f587a85"
-  ],
   "https://videoclasses.vercel.app/": [
    "24052c3f1e5c0ac5bc4f",
    "96d73d6b471fc4af707a",
@@ -24,21 +13,9 @@
  },
  "last_result": "4 bheji, 0 fail, 0 badi files ruki",
  "last_sync": "2026-10-28T09:10:54Z",
- "offset": 959581383,
+ "offset": 959581384,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
-  "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
-   "url:https://f-droid.org/F-Droid.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000051.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000050.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000041.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000040.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000011.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000010.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000009.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000008.apk"
-  ],
   "https://spidyiq.vercel.app/course/9854/English": [],
   "https://videoclasses.vercel.app/": [
    "tgvideo:3723101547:4",
@@ -48,13 +25,6 @@
   ]
  },
  "sites": [
-  {
-   "adapter": "generic",
-   "added": "2026-10-28T08:20:00Z",
-   "demo": true,
-   "limit": 3,
-   "url": "https://f-droid.org/en/packages/org.fdroid.fdroid/"
-  },
   {
    "adapter": "tgvideo",
    "added": "2026-10-28T08:37:09Z",
