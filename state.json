@@ -2,23 +2,49 @@
  "big_pending": {},
  "errors": [],
  "fails": {},
- "files_sent_total": 3,
+ "files_sent_total": 12,
  "hashes": {
   "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
    "19d51fad482239f6df6a",
    "83d3fe522281c3cb89fc",
-   "94938d324b03755fb324"
+   "94938d324b03755fb324",
+   "36b343514ea2cdd353b7",
+   "cd492ba2d5a425ad80aa",
+   "730f81f2cf860b267141"
+  ],
+  "https://videoclasses.vercel.app": [
+   "24052c3f1e5c0ac5bc4f",
+   "96d73d6b471fc4af707a",
+   "a39a9bd99486dada2267"
+  ],
+  "https://videoclasses.vercel.app/": [
+   "24052c3f1e5c0ac5bc4f",
+   "96d73d6b471fc4af707a",
+   "a39a9bd99486dada2267"
   ]
  },
- "last_result": "3 bheji, 0 fail, 0 badi files ruki",
- "last_sync": "2026-10-28T08:32:00Z",
- "offset": 959581372,
+ "last_result": "9 bheji, 0 fail, 0 badi files ruki",
+ "last_sync": "2026-10-28T08:39:27Z",
+ "offset": 959581377,
  "sent": {
   "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
    "url:https://f-droid.org/F-Droid.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000052.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000051.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000050.apk"
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000050.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000041.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000040.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000011.apk"
+  ],
+  "https://videoclasses.vercel.app": [
+   "tgvideo:3723101547:4",
+   "tgvideo:3723101547:5",
+   "tgvideo:3723101547:6"
+  ],
+  "https://videoclasses.vercel.app/": [
+   "tgvideo:3723101547:4",
+   "tgvideo:3723101547:5",
+   "tgvideo:3723101547:6"
   ]
  },
  "sites": [
@@ -28,6 +54,18 @@
    "demo": true,
    "limit": 3,
    "url": "https://f-droid.org/en/packages/org.fdroid.fdroid/"
+  },
+  {
+   "adapter": "tgvideo",
+   "added": "2026-10-28T08:37:09Z",
+   "limit": 3,
+   "url": "https://videoclasses.vercel.app/"
+  },
+  {
+   "adapter": "tgvideo",
+   "added": "2026-10-28T08:37:10Z",
+   "limit": 3,
+   "url": "https://videoclasses.vercel.app"
   }
  ],
  "sync_requested": false
