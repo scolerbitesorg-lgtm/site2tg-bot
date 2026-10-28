@@ -2,7 +2,7 @@
  "big_pending": {},
  "errors": [],
  "fails": {},
- "files_sent_total": 12,
+ "files_sent_total": 16,
  "hashes": {
   "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
    "19d51fad482239f6df6a",
@@ -10,17 +10,22 @@
    "94938d324b03755fb324",
    "36b343514ea2cdd353b7",
    "cd492ba2d5a425ad80aa",
-   "730f81f2cf860b267141"
+   "730f81f2cf860b267141",
+   "0b6c65becb0712828625",
+   "d6e5eaea63107aed8e46",
+   "72e139a04fcd0f587a85"
   ],
   "https://videoclasses.vercel.app/": [
    "24052c3f1e5c0ac5bc4f",
    "96d73d6b471fc4af707a",
-   "a39a9bd99486dada2267"
+   "a39a9bd99486dada2267",
+   "91666cf3e5a1e91aae99"
   ]
  },
- "last_result": "9 bheji, 0 fail, 0 badi files ruki",
- "last_sync": "2026-10-28T08:39:27Z",
- "offset": 959581379,
+ "last_result": "4 bheji, 0 fail, 0 badi files ruki",
+ "last_sync": "2026-10-28T09:10:54Z",
+ "offset": 959581381,
+ "routing": "videos → main channel, baaki files → main channel",
  "sent": {
   "https://f-droid.org/en/packages/org.fdroid.fdroid/": [
    "url:https://f-droid.org/F-Droid.apk",
@@ -29,12 +34,17 @@
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000050.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000041.apk",
    "url:https://f-droid.org/repo/org.fdroid.fdroid_2000040.apk",
-   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000011.apk"
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000011.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000010.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000009.apk",
+   "url:https://f-droid.org/repo/org.fdroid.fdroid_2000008.apk"
   ],
+  "https://spidyiq.vercel.app/course/9854/English": [],
   "https://videoclasses.vercel.app/": [
    "tgvideo:3723101547:4",
    "tgvideo:3723101547:5",
-   "tgvideo:3723101547:6"
+   "tgvideo:3723101547:6",
+   "tgvideo:3723101547:14"
   ]
  },
  "sites": [
@@ -50,6 +60,13 @@
    "added": "2026-10-28T08:37:09Z",
    "limit": 3,
    "url": "https://videoclasses.vercel.app/"
+  },
+  {
+   "adapter": "generic",
+   "added": "2026-10-28T09:10:11Z",
+   "depth": 5,
+   "limit": 3,
+   "url": "https://spidyiq.vercel.app/course/9854/English"
   }
  ],
  "sync_requested": false
