@@ -316,7 +316,7 @@ def cmd_add_youtube_source(state, arg, kind):
     else:
         how = "Playlist ki videos download karke upload hongi (har sync mein kuch)."
     return ("✅ YouTube " + ("channel" if kind == "channel" else "playlist") + " add ho gaya.\n" + how +
-            "\nSirf watch LINK post hota hai, video download nahi.\n" + source["url"])
+            "\nSirf public, non-DRM videos jinke download/repost ki permission ho, process hongi.\n" + source["url"])
 
 
 def cmd_addplaylist(state, arg):
