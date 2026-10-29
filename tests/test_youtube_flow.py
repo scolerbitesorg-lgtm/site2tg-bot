@@ -1,16 +1,25 @@
-"""YouTube routing, link queues from websites, channel seeding, per-site "why 0"
-notes (offline: fake Telegram, fake sites)."""
+"""YouTube routing, queues, and channel seeding (offline; all downloads mocked)."""
+import os
+from pathlib import Path
+
 from bot import main as m
 from bot import state as st
 from bot.adapters.base import Item
 
 
 class Bot:
-    def __init__(self):
+    def __init__(self, fail_upload=False):
         self.msgs = []
+        self.uploads = []
+        self.fail_upload = fail_upload
 
     def send_message(self, chat_id, text):
         self.msgs.append((str(chat_id), text))
+
+    def send_file(self, chat_id, path, filename, caption, kind):
+        self.uploads.append((str(chat_id), path, filename, caption, kind))
+        if self.fail_upload:
+            raise RuntimeError("mock Telegram upload failure")
 
     def edit_message(self, chat_id, message_id, text):
         raise RuntimeError("no edit in this test")
@@ -25,34 +34,47 @@ def fresh(monkeypatch, tmp_path):
     return st.load()
 
 
-def test_addsite_with_a_youtube_video_posts_the_link_instead(monkeypatch, tmp_path):
+def fake_download(monkeypatch, tmp_path):
+    def download(url):
+        path = tmp_path / (url.rsplit("=", 1)[-1] + ".mp4")
+        path.write_bytes(b"mock video bytes")
+        return path.name, str(path), path.stat().st_size
+    monkeypatch.setattr(m, "download_youtube_video", download)
+
+
+def test_addsite_with_youtube_video_downloads_and_uploads(monkeypatch, tmp_path):
     state, bot = fresh(monkeypatch, tmp_path), Bot()
+    fake_download(monkeypatch, tmp_path)
     monkeypatch.setattr(m.adapters, "list_items", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no crawl")))
     m.run_command(bot, state, "/addsite https://youtu.be/mWlmcjwV44o?si=Rz", "7")
     assert state["sites"] == []
-    assert bot.msgs[0] == ("-100", "▶️ YouTube video link\nhttps://www.youtube.com/watch?v=mWlmcjwV44o")
-    assert "single video" in bot.msgs[1][1] and bot.msgs[1][0] == "7"
-    # same video again: not posted twice
-    m.run_command(bot, state, "/yt https://www.youtube.com/watch?v=mWlmcjwV44o", "7")
-    assert len([x for x in bot.msgs if x[0] == "-100"]) == 1 and "pehle hi" in bot.msgs[-1][1]
+    assert len(bot.uploads) == 1
+    assert bot.uploads[0][0] == "-100"
+    assert bot.uploads[0][2] == "mWlmcjwV44o.mp4"
+    assert "upload kar di" in bot.msgs[-1][1]
+    # The manual video is recorded only after upload succeeds.
+    assert "mWlmcjwV44o" in state["youtube_seen"]["manual"]
 
 
-def test_addyoutube_with_video_or_playlist_link_goes_to_the_right_place(monkeypatch, tmp_path):
+def test_addyoutube_video_and_playlist_routing(monkeypatch, tmp_path):
     state, bot = fresh(monkeypatch, tmp_path), Bot()
+    fake_download(monkeypatch, tmp_path)
     m.run_command(bot, state, "/addyoutube https://youtu.be/mWlmcjwV44o", "7")
-    assert state["youtube_sources"] == [] and bot.msgs[0][0] == "-100"
+    assert state["youtube_sources"] == []
+    assert len(bot.uploads) == 1 and bot.uploads[0][0] == "-100"
     m.run_command(bot, state, "/addsite https://www.youtube.com/playlist?list=PL1234567890abcd", "7")
     assert [(s["kind"], s["id"]) for s in state["youtube_sources"]] == [("playlist", "PL1234567890abcd")]
     assert state["sites"] == [] and "playlist" in bot.msgs[-1][1]
     m.run_command(bot, state, "/removeyoutube PL1234567890abcd", "7")
     assert state["youtube_sources"] == []
-    m.run_command(bot, state, "/removeyoutube a", "7")      # too short to match anything
+    m.run_command(bot, state, "/removeyoutube a", "7")
     assert "nahi mili" in bot.msgs[-1][1]
 
 
-def test_site_youtube_videos_are_queued_and_posted_a_few_per_run(monkeypatch, tmp_path):
+def test_site_youtube_queue_uploads_a_few_per_run(monkeypatch, tmp_path):
     state, bot = fresh(monkeypatch, tmp_path), Bot()
-    monkeypatch.setenv("MAX_YOUTUBE_LINKS_PER_RUN", "2")
+    fake_download(monkeypatch, tmp_path)
+    monkeypatch.setenv("MAX_YOUTUBE_VIDEOS_PER_RUN", "2")
     url = "https://ex.am/p/7/videos"
     state["sites"] = [{"url": url, "adapter": "generic", "depth": 5, "limit": 3}]
     state["sent"][url] = []
@@ -60,15 +82,15 @@ def test_site_youtube_videos_are_queued_and_posted_a_few_per_run(monkeypatch, tm
                caption=f"Lecture {c}", kind="youtube") for c in "abc"]
     monkeypatch.setattr(m.adapters, "list_items", lambda *a, **k: ("generic", list(yt)))
     sent, failed, big = m.sync(bot, state, "-100")
-    assert (sent, failed) == (2, 0)
-    assert [t.split("\n")[1] for _, t in bot.msgs] == [
-        "https://www.youtube.com/watch?v=aaaaaaaaaaa", "https://www.youtube.com/watch?v=bbbbbbbbbbb"]
+    assert (sent, failed, big) == (2, 0, 0)
+    assert len(bot.uploads) == 2
+    assert [u[2] for u in bot.uploads] == ["aaaaaaaaaaa.mp4", "bbbbbbbbbbb.mp4"]
     assert "YouTube links: 2" in state["last_result"]
-    m.sync(bot, state, "-100")                          # next run: the last one, nothing twice
-    assert [t.split("\n")[1] for _, t in bot.msgs][2:] == ["https://www.youtube.com/watch?v=ccccccccccc"]
     m.sync(bot, state, "-100")
-    assert len(bot.msgs) == 3 and "site:ex.am/p/7/videos" not in state["youtube_pending"]
-    assert "YouTube links: 3 post" in m.cmd_sites(state, "")
+    assert [u[2] for u in bot.uploads] == ["aaaaaaaaaaa.mp4", "bbbbbbbbbbb.mp4", "ccccccccccc.mp4"]
+    m.sync(bot, state, "-100")
+    assert len(bot.uploads) == 3 and "site:ex.am/p/7/videos" not in state["youtube_pending"]
+    assert "YouTube links: 3" in m.cmd_sites(state, "")
 
 
 def test_empty_site_gets_a_plain_reason_in_status_and_sync_reply(monkeypatch, tmp_path):
@@ -86,22 +108,25 @@ def test_empty_site_gets_a_plain_reason_in_status_and_sync_reply(monkeypatch, tm
     assert url not in state["site_notes"]
 
 
-def test_new_channel_posts_only_its_latest_three(monkeypatch, tmp_path):
+def test_new_channel_posts_only_its_latest_three_as_files(monkeypatch, tmp_path):
     state, bot = fresh(monkeypatch, tmp_path), Bot()
+    fake_download(monkeypatch, tmp_path)
     state["youtube_sources"] = [{"kind": "channel", "id": "UC" + "a" * 22, "url": "https://www.youtube.com/channel/x"}]
     entries = [{"id": f"{i:011d}", "title": f"v{i}", "url": f"https://www.youtube.com/watch?v={i:011d}"} for i in range(10)]
     monkeypatch.setattr(m.youtube_tracker, "fetch_entries", lambda s: list(entries))
     m.sync_youtube_links(bot, state, "-100")
-    assert [t.split("\n")[0] for _, t in bot.msgs] == ["▶️ v7", "▶️ v8", "▶️ v9"]
+    assert [u[3].split("\\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8"]
+    # Default queue limit is two videos per run.
+    m.sync_youtube_links(bot, state, "-100")
+    assert [u[3].split("\\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8", "▶️ v9"]
     entries.append({"id": "00000000010", "title": "new upload", "url": "https://www.youtube.com/watch?v=00000000010"})
     m.sync_youtube_links(bot, state, "-100")
-    assert [t.split("\n")[0] for _, t in bot.msgs][3:] == ["▶️ new upload"]
+    assert [u[3].split("\\n")[0] for u in bot.uploads][3:] == ["▶️ new upload"]
 
 
 def test_youtube_fetch_error_is_recorded_once_and_does_not_count_as_failed(monkeypatch, tmp_path):
     state, bot = fresh(monkeypatch, tmp_path), Bot()
     state["youtube_sources"] = [{"kind": "playlist", "id": "PL1234567890abcd", "url": "u"}]
-
     def boom(s):
         raise RuntimeError("YouTube page HTTP 429")
     monkeypatch.setattr(m.youtube_tracker, "fetch_entries", boom)
