@@ -468,6 +468,7 @@ def download_youtube_video(url):
     opts = {
         "format": "best[ext=mp4][height<=720]/best[ext=mp4]/best[height<=720]/best",
         "merge_output_format": "mp4",
+        "js_runtimes": {"deno": {}},
         "outtmpl": os.path.join(folder, "%(id)s.%(ext)s"),
         "noplaylist": True,
         "quiet": True,
