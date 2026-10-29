@@ -226,7 +226,7 @@ def _site_line(state, i, s):
     line = (f"{i}. {url} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync"
             + (f", {s['depth']} level andar" if s.get("depth") else "") + f") — {files} files bheji")
     if yt_posted or yt_queue:
-        line += f", YouTube links: {yt_posted} post, {yt_queue} line mein"
+        line += f", YouTube videos: {yt_posted} upload, {yt_queue} queue mein"
     note = (state.get("site_notes") or {}).get(url)
     if note:
         line += f"\n   ⚠️ 0 kyun: {note}"
@@ -249,7 +249,7 @@ def cmd_status(state, _):
         f"Total files bheji: {state.get('files_sent_total', 0)}",
         f"Last sync: {ist(state.get('last_sync'))}",
         f"Last result: {state.get('last_result') or '-'}",
-        f"YouTube links line mein: {yt_pending}",
+        f"YouTube videos queue mein: {yt_pending}",
         f"Channels: {routing_note()}",
         f"Badi files (>50 MB) ke liye userbot: {'ON ✅' if userbot.available() else 'OFF (secrets nahi hain)'}",
     ]
@@ -409,7 +409,7 @@ def route_youtube(bot, state, cmd, arg):
     if cmd == "/addsite":
         if kind is None and not youtube_tracker.is_youtube_url(link):
             return None
-        lead = "YouTube website ki tarah add nahi hota (bot YouTube video download nahi karta). "
+        lead = "YouTube link mila; public non-DRM video download/upload workflow use hoga. "
     else:
         lead = ""
     if kind == "video":
