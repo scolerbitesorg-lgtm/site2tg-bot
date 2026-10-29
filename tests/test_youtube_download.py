@@ -112,7 +112,9 @@ def make_state(tmp_path):
 
 
 def test_telegram_upload_failure_keeps_video_file(monkeypatch, tmp_path):
-    path = tmp_path / "owned.mp4"
+    folder = tmp_path / "download"
+    folder.mkdir()
+    path = folder / "owned.mp4"
     path.write_bytes(b"video")
     monkeypatch.setattr(m, "download_youtube_video", lambda url: (path.name, str(path), path.stat().st_size))
     bot = UploadBot(fail=True)
@@ -122,7 +124,9 @@ def test_telegram_upload_failure_keeps_video_file(monkeypatch, tmp_path):
 
 
 def test_telegram_upload_success_deletes_video_file(monkeypatch, tmp_path):
-    path = tmp_path / "owned.mp4"
+    folder = tmp_path / "download"
+    folder.mkdir()
+    path = folder / "owned.mp4"
     path.write_bytes(b"video")
     monkeypatch.setattr(m, "download_youtube_video", lambda url: (path.name, str(path), path.stat().st_size))
     bot = UploadBot()
