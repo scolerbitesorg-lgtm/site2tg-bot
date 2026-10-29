@@ -288,9 +288,16 @@ test("YouTube menu buttons ask for input and reply dispatches the matching comma
   }
 });
 
-test("YouTube trackers menu button dispatches /youtubes", async () => {
-  const r = await run(ENV, cb("m:youtubes", 111), S);
-  assert.strictEqual(r.calls.find((call) => call.url.endsWith("/dispatches")).body.inputs.command, "/youtubes");
+test("YouTube trackers button and /youtubes answer live from state.json (no GitHub run)", async () => {
+  const over = (c) => (c.url.includes("/contents/state.json") ? { text: JSON.stringify(Object.assign({}, STATE, {
+    youtube_sources: [{ kind: "playlist", id: "PL1234567890abcd", url: "https://www.youtube.com/playlist?list=PL1234567890abcd" }],
+    youtube_seen: { "playlist:PL1234567890abcd": ["a", "b"] }, youtube_pending: { "playlist:PL1234567890abcd": [{ id: "c" }] },
+  })) } : null);
+  for (const u of [cb("m:youtubes", 111), msg("/youtubes", 111)]) {
+    const r = await run(ENV, u, S, over);
+    assert.ok(!r.calls.some((c) => c.url.endsWith("/dispatches")));
+    assert.match(r.sent[0].text, /Playlist — https:\/\/www\.youtube\.com\/playlist\?list=PL1234567890abcd\n {3}Post hue: 2 · line mein: 1/);
+  }
 });
 
 test("unknown/old button gets a gentle message", async () => {
@@ -429,7 +436,7 @@ test("setup sets webhook (message + callback_query) on the production URL, plus 
   const set = calls.find((c) => c.url.endsWith("/setWebhook"));
   assert.deepStrictEqual(set.body, { url: "https://site2tg-bot.vercel.app/api/telegram", secret_token: S, allowed_updates: ["message", "callback_query"], max_connections: 5 });
   const cmds = calls.find((c) => c.url.endsWith("/setMyCommands")).body.commands.map((c) => c.command);
-  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "get", "addsite", "removesite", "sync", "addplaylist", "addyoutube", "youtubes", "removeyoutube", "yt", "retry", "id", "help"]);
+  assert.deepStrictEqual(cmds, ["menu", "status", "sites", "ai", "get", "addsite", "removesite", "sync", "addplaylist", "addyoutube", "youtubes", "removeyoutube", "yt", "retry", "id", "help"]);
   assert.deepStrictEqual(calls.find((c) => c.url.endsWith("/setChatMenuButton")).body, { menu_button: { type: "commands" } });
   assert.match(res.body, /Webhook set ho gaya/);
   assert.ok(!res.body.includes(S) && !res.body.includes(ENV.BOT_TOKEN));
@@ -475,7 +482,7 @@ test("/get <link> dispatches at once with ⏳; streams/YouTube refused instantly
   assert.deepStrictEqual(r.calls.find((c) => c.url.endsWith("/dispatches")).body.inputs, { command: "/get https://cdn.x.com/v.mp4", ack_message_id: "501" });
   for (const u of ["https://x.com/live/index.m3u8", "https://x.com/a.m3u8?token=1", "https://www.youtube.com/watch?v=1", "https://youtu.be/abc", "https://x.com/v.mpd"]) {
     r = await run(ENV, msg("/get " + u, 111), S);
-    assert.match(r.sent[0].text, /stream\/YouTube/, u);
+    assert.match(r.sent[0].text, /stream\/YouTube|YouTube video download nahi/, u);
     assert.ok(!r.calls.some((c) => c.url.endsWith("/dispatches")), u);
   }
   r = await run(ENV, msg("/get", 111), S);
@@ -491,6 +498,8 @@ test("📥 Download link button asks for a link; the reply becomes /get", async 
   r = await run(ENV, reply("https://cdn.x.com/app.apk"), S);
   assert.strictEqual(r.calls.find((c) => c.url.endsWith("/dispatches")).body.inputs.command, "/get https://cdn.x.com/app.apk");
   r = await run(ENV, reply("https://youtu.be/xyz"), S);
+  assert.match(r.sent[0].text, /\/yt <link>/);
+  r = await run(ENV, reply("https://x.com/a.m3u8"), S);
   assert.match(r.sent[0].text, /stream\/YouTube/);
   r = await run(ENV, reply("not a link"), S);
   assert.match(r.sent[0].text, /link nahi lag raha/);
@@ -501,4 +510,66 @@ test("status shows channel routing and the last /get from state.json", () => {
   const t = formatStatus({ state: st, runs: [] }, NOW);
   assert.match(t, /Channels: videos → alag video channel, baaki files → main channel/);
   assert.match(t, /Last \/get: a\.apk \(12\.0 MB\), 28 Oct 02:25 PM IST/);
+});
+
+// ---------------------------------------------------------------- 2026-10-29: link hints, why-0 notes
+
+test("a bare link without a command gets the right command suggested, not the AI", async () => {
+  const cases = [
+    ["https://youtu.be/mWlmcjwV44o?si=Rz", /\/yt https:\/\/youtu\.be/],
+    ["https://www.youtube.com/playlist?list=PL1234567890abcd", /\/addplaylist/],
+    ["https://www.youtube.com/@StudyIQ", /\/addyoutube/],
+    ["https://cdn.x.com/v.mp4", /\/get https:\/\/cdn\.x\.com\/v\.mp4/],
+    ["https://x.com/live/index.m3u8", /stream/],
+    ["https://examhint.com/p/7/videos", /\/addsite https:\/\/examhint\.com/],
+  ];
+  for (const [text, re] of cases) {
+    const r = await run(Object.assign({}, ENV, { NVIDIA_API_KEY: "nvapi-x" }), msg(text, 111), S);
+    assert.match(r.sent[0].text, re, text);
+    assert.ok(!r.calls.some((c) => c.url.includes("nvidia") || c.url.endsWith("/dispatches")), text);
+  }
+  assert.strictEqual(W.linkHint("site kab sync hogi?"), null);
+});
+
+test("status and sites explain why a site gave 0, and count YouTube links found on a site", () => {
+  const st = Object.assign({}, STATE, {
+    sites: [{ url: "https://spidyiq.vercel.app/course/9854/English", adapter: "generic", depth: 5 },
+            { url: "https://examhint.com/p/7/video-lectures", adapter: "generic", depth: 5 }],
+    site_notes: { "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai" },
+    youtube_seen: { "site:examhint.com/p/7/video-lectures": ["a", "b"] },
+    youtube_pending: { "site:examhint.com/p/7/video-lectures": [{ id: "c" }, { id: "d" }] },
+  });
+  const t = formatStatus({ state: st, runs: RUNS }, NOW);
+  assert.match(t, /spidyiq[^\n]*\n0 kyun: ye site JavaScript app hai/);
+  assert.match(t, /YouTube links line mein: 2/);
+  assert.match(t, /Last auto-sync \(GitHub schedule\): 28 Oct 01:47 PM IST/);
+  const s = W.formatSites(st);
+  assert.match(s, /examhint[^\n]*YouTube links: 2 post, 2 line mein/);
+  assert.match(s, /⚠️ 0 kyun: ye site JavaScript app hai/);
+});
+
+test("/api/tick: needs its own key, skips while a run is active or fresh, else starts a plain run", async () => {
+  const TK = "tick_key_1234567890";
+  const call = async (env, path, over) => {
+    const f = mockFetch(net(over));
+    const res = mockRes();
+    await W.createTickHandler({ env, fetch: f, log: () => {}, now: () => NOW })({ method: "GET", url: path, headers: {} }, res);
+    return { res, calls: f.calls };
+  };
+  let r = await call(ENV, "/api/tick?key=" + TK);
+  assert.strictEqual(r.res.statusCode, 404);
+  const env = Object.assign({}, ENV, { TICK_KEY: TK });
+  r = await call(env, "/api/tick?key=" + ENV.WEBHOOK_SECRET);
+  assert.strictEqual(r.res.statusCode, 403);
+  assert.strictEqual(r.calls.length, 0);
+  r = await call(env, "/api/tick?key=" + TK);                       // RUNS has one in_progress
+  assert.match(r.res.body, /pehle se chal raha/);
+  assert.ok(!r.calls.some((c) => c.url.endsWith("/dispatches")));
+  const old = [{ status: "completed", conclusion: "success", event: "schedule", created_at: "2026-10-28T08:20:00Z" }];
+  r = await call(env, "/api/tick?key=" + TK, (c) => (c.url.includes("/runs?") ? { json: { workflow_runs: old } } : null));
+  assert.strictEqual(r.res.statusCode, 200);
+  assert.deepStrictEqual(r.calls.find((c) => c.url.endsWith("/dispatches")).body, { ref: "main", inputs: { command: "" } });
+  const fresh = [{ status: "completed", conclusion: "success", event: "schedule", created_at: "2026-10-28T08:55:00Z" }];
+  r = await call(env, "/api/tick?key=" + TK, (c) => (c.url.includes("/runs?") ? { json: { workflow_runs: fresh } } : null));
+  assert.match(r.res.body, /10 min/);
 });
