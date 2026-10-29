@@ -92,7 +92,7 @@ def test_site_youtube_queue_uploads_a_few_per_run(monkeypatch, tmp_path):
     assert [u[2] for u in bot.uploads] == ["aaaaaaaaaaa.mp4", "bbbbbbbbbbb.mp4", "ccccccccccc.mp4"]
     m.sync(bot, state, "-100")
     assert len(bot.uploads) == 3 and "site:ex.am/p/7/videos" not in state["youtube_pending"]
-    assert "YouTube links: 3" in m.cmd_sites(state, "")
+    assert "YouTube videos: 3 upload" in m.cmd_sites(state, "")
 
 
 def test_empty_site_gets_a_plain_reason_in_status_and_sync_reply(monkeypatch, tmp_path):
@@ -117,13 +117,13 @@ def test_new_channel_posts_only_its_latest_three_as_files(monkeypatch, tmp_path)
     entries = [{"id": f"{i:011d}", "title": f"v{i}", "url": f"https://www.youtube.com/watch?v={i:011d}"} for i in range(10)]
     monkeypatch.setattr(m.youtube_tracker, "fetch_entries", lambda s: list(entries))
     m.sync_youtube_links(bot, state, "-100")
-    assert [u[3].split("\\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8"]
+    assert [u[3].split("\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8"]
     # Default queue limit is two videos per run.
     m.sync_youtube_links(bot, state, "-100")
-    assert [u[3].split("\\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8", "▶️ v9"]
+    assert [u[3].split("\n")[0] for u in bot.uploads] == ["▶️ v7", "▶️ v8", "▶️ v9"]
     entries.append({"id": "00000000010", "title": "new upload", "url": "https://www.youtube.com/watch?v=00000000010"})
     m.sync_youtube_links(bot, state, "-100")
-    assert [u[3].split("\\n")[0] for u in bot.uploads][3:] == ["▶️ new upload"]
+    assert [u[3].split("\n")[0] for u in bot.uploads][3:] == ["▶️ new upload"]
 
 
 def test_youtube_fetch_error_is_recorded_once_and_does_not_count_as_failed(monkeypatch, tmp_path):
