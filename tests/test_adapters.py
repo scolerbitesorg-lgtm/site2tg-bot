@@ -202,3 +202,41 @@ def test_root_page_with_files_is_not_crawled():
     site = FakeSite({ROOT: '<a href="z.apk">z</a> <a href="a/">a</a>'})
     items = generic.list_items(ROOT, site.pages[ROOT], depth=5, session=site, sleep=lambda s: None)
     assert [i.filename for i in items] == ["z.apk"] and site.got == [ROOT.replace("/files/", "/robots.txt")]
+
+
+# ---------------------------------------------------------------- listing page whose lectures live elsewhere
+
+LIST = "https://ex.am/p/7/video-lectures"
+EX = {
+    LIST: ('<title>Video lectures</title><header><nav><a href="/p/1/jobs">Jobs</a><a href="/p/2/notes">Notes</a></nav></header>'
+           '<nav class="cats"><a href="/video-lectures/current-affairs">Cat</a></nav>'
+           '<main><ul><li><a href="/video-lectures/day-28">28 Oct</a></li><li><a href="/video-lectures/day-27">27 Oct</a></li>'
+           '<li><a href="https://other.site/x">elsewhere</a></li></ul></main>'
+           '<footer><a href="/login">login</a><a href="/about">about</a></footer>'),
+    "https://ex.am/video-lectures/day-28": '<title>28 Oct lecture</title><div class="yt-lite" data-ytid="KR_gAamao2Y"></div><a href="/video-lectures/day-1">related</a>',
+    "https://ex.am/video-lectures/day-27": '<title>27 Oct lecture</title><iframe src="https://www.youtube.com/embed/pRibu216OC8"></iframe>',
+    "https://ex.am/p/2/notes": '<a href="notes.pdf">pdf that must not be taken</a>',
+    "https://ex.am/video-lectures/day-1": '<a href="never.mp4">x</a>',
+}
+
+
+def test_listing_page_follows_content_links_outside_its_folder_and_finds_youtube():
+    site = FakeSite(EX)
+    items = generic.list_items(LIST, EX[LIST], depth=5, session=site, sleep=lambda s: None)
+    assert [(i.id, i.kind, i.caption) for i in items] == [
+        ("yt:KR_gAamao2Y", "youtube", "28 Oct lecture"), ("yt:pRibu216OC8", "youtube", "27 Oct lecture")]
+    assert items[0].url == "https://www.youtube.com/watch?v=KR_gAamao2Y"
+    fetched = [u for u in site.got if not u.endswith("robots.txt")]
+    assert fetched == ["https://ex.am/video-lectures/day-28", "https://ex.am/video-lectures/day-27"]  # no menu/footer pages
+
+
+def test_explain_says_why_nothing_was_found():
+    js_shell = ('<html><body><div>Videos (0)</div><script>self.__next_f.push([1,"x"])</script></body></html>')
+    generic.list_items("https://js.app/course/1", js_shell, depth=0)
+    assert "JavaScript" in generic.LAST_NOTES["https://js.app/course/1"]
+    generic.list_items("https://hls.site/v", '<script>player.load("/v/master.m3u8")</script>', depth=0)
+    assert "m3u8" in generic.LAST_NOTES["https://hls.site/v"]
+    generic.list_items("https://plain.site/", "<p>hello</p>", depth=0)
+    assert "nahi mila" in generic.LAST_NOTES["https://plain.site/"]
+    generic.list_items("https://plain.site/", '<a href="a.pdf">a</a>', depth=0)
+    assert "https://plain.site/" not in generic.LAST_NOTES

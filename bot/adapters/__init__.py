@@ -18,6 +18,11 @@ def fetch_page(url: str) -> str:
     return r.text
 
 
+def note_for(url: str):
+    """Plain-words reason the last read of this site found nothing (or None)."""
+    return generic.LAST_NOTES.get(url)
+
+
 def list_items(url: str, adapter: str = None, depth: int = 0):
     html = fetch_page(url)
     name = adapter or detect(html)

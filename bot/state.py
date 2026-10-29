@@ -20,6 +20,7 @@ DEFAULT = {
     "youtube_sources": [],  # public channel/playlist link trackers
     "youtube_seen": {},     # source key -> posted video IDs
     "youtube_pending": {},  # source key -> durable queue of public watch links
+    "site_notes": {},       # site url -> why the last sync found nothing there (plain words)
 }
 
 

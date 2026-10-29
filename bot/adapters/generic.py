@@ -1,6 +1,8 @@
 """Generic adapter: read a web page (and, if asked, its inner pages on the same
-site) and collect direct file links. Plain HTML only: links that a page builds
-with JavaScript are not seen."""
+site) and collect direct file links, plus YouTube videos the pages embed
+(those become watch LINKS for the link tracker, never downloads). Plain HTML
+only: links that a page builds with JavaScript are not seen; `explain()` says
+in plain words why a site gave nothing."""
 import os
 import re
 import time
@@ -11,6 +13,7 @@ from urllib.parse import urljoin, urlparse, unquote, urldefrag
 from .base import Item
 from ..util import UA, http, safe_name
 from ..security import safe_request
+from .. import youtube_tracker
 
 # file types the bot picks up (page icons/screenshots/logs are deliberately not included)
 EXTS = {
@@ -63,7 +66,18 @@ def extract_links(html: str, page_url: str):
     return out
 
 
-def items_from_html(html: str, page_url: str):
+def youtube_items(html: str, page_url: str, title: str = ""):
+    """YouTube videos a page embeds, as link-only items (kind "youtube")."""
+    return [Item(id="yt:" + vid, url=f"https://www.youtube.com/watch?v={vid}", filename=vid,
+                 caption=title or "YouTube video", kind="youtube")
+            for vid in youtube_tracker.video_ids_from_html(html)]
+
+
+def has_content(html: str, page_url: str) -> bool:
+    return bool(extract_links(html, page_url) or youtube_tracker.video_ids_from_html(html))
+
+
+def items_from_html(html: str, page_url: str, title: str = ""):
     items = []
     for u in extract_links(html, page_url):
         ext = file_ext(u)
@@ -76,7 +90,7 @@ def items_from_html(html: str, page_url: str):
             headers={"Referer": page_url},
             kind="video" if ext in VIDEO_EXTS else "document",
         ))
-    return items
+    return items + youtube_items(html, page_url, title)
 
 
 # ------------------------------------------------------------------ same-site crawl
@@ -89,22 +103,31 @@ SKIP_WORDS = re.compile(r"(log-?in|log-?out|sign-?in|sign-?up|signout|register|a
                         r"wp-admin|wp-login|admin|feed|share|print)", re.I)
 
 
+CHROME_TAGS = {"nav", "header", "footer", "aside"}
+
+
 class _PageParser(HTMLParser):
+    """<a href> links (each marked: inside the page's menu/header/footer or in
+    its main content) and the <title>."""
     def __init__(self):
         super().__init__()
-        self.hrefs, self.title, self._in_title = [], "", False
+        self.hrefs, self.title, self._in_title, self._chrome = [], "", False, 0
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             for k, v in attrs:
                 if k == "href" and v:
-                    self.hrefs.append(v.strip())
+                    self.hrefs.append((v.strip(), self._chrome > 0))
         elif tag == "title":
             self._in_title = True
+        elif tag in CHROME_TAGS:
+            self._chrome += 1
 
     def handle_endtag(self, tag):
         if tag == "title":
             self._in_title = False
+        elif tag in CHROME_TAGS and self._chrome:
+            self._chrome -= 1
 
     def handle_data(self, data):
         if self._in_title and len(self.title) < 200:
@@ -122,26 +145,33 @@ def scope_prefix(site_url: str) -> str:
     return path if path.endswith("/") else path.rsplit("/", 1)[0] + "/"
 
 
-def page_links(html: str, page_url: str, site_url: str):
-    """Inner pages to visit: <a href> on the same host, under the added URL's
-    path, not files/assets/login pages."""
+def page_links(html: str, page_url: str, site_url: str, prefixes=None, content_only=False):
+    """Inner pages to visit: <a href> on the same host, under one of the
+    allowed path prefixes (default: the added URL's folder), not
+    files/assets/login pages. prefixes=() + content_only=True: any path on the
+    host, but only links in the page's main content (not menu/header/footer)."""
     p = _PageParser()
     p.feed(html)
-    host, prefix = _host(site_url), scope_prefix(site_url)
+    host = _host(site_url)
+    if prefixes is None:
+        prefixes = (scope_prefix(site_url),)
     out, seen = [], set()
-    for raw in p.hrefs:
+    for raw, in_chrome in p.hrefs:
         if raw.startswith(("javascript:", "mailto:", "tel:", "data:", "#")):
+            continue
+        if content_only and in_chrome:
             continue
         u, _ = urldefrag(urljoin(page_url, raw))
         pu = urlparse(u)
         if pu.scheme not in ("http", "https") or _host(u) != host:
             continue
-        if not (pu.path or "/").startswith(prefix) and (pu.path or "/") + "/" != prefix:
+        path = pu.path or "/"
+        if prefixes and not any(path.startswith(px) or path + "/" == px for px in prefixes):
             continue
         ext = file_ext(u)
         if ext in EXTS or ext in SKIP_EXTS or SKIP_WORDS.search(pu.path + "?" + pu.query):
             continue
-        if u not in seen:
+        if u not in seen and u != urldefrag(page_url)[0]:
             seen.add(u)
             out.append(u)
     return out, " ".join(p.title.split())
@@ -164,9 +194,14 @@ def crawl(site_url: str, first_html: str, depth: int, max_pages: int = DEFAULT_M
           delay: float = 0.5, session=None, sleep=time.sleep):
     """Breadth-first visit of inner pages. Returns [(page_url, html, title)].
     The added URL itself is always read (the owner asked for it); inner pages
-    obey robots.txt. Smart stop: a page that already has file links is a
-    finished branch, its links are not followed; only branches with no files
-    yet go deeper."""
+    obey robots.txt. Smart stop: a page that already has files (or YouTube
+    videos) is a finished branch, its links are not followed; only branches
+    with nothing yet go deeper.
+    Scope: pages under the added URL's folder. When the added page links to
+    nothing in its folder (a listing page like /p/7/videos whose lectures live
+    at /video-lectures/...), the links in its main content are followed
+    instead (menu/header/footer links are not), and their folders join the
+    scope."""
     depth = max(0, min(int(depth or 0), MAX_DEPTH))
     s = session or http()
     _, title0 = page_links(first_html, site_url, site_url)
@@ -175,13 +210,20 @@ def crawl(site_url: str, first_html: str, depth: int, max_pages: int = DEFAULT_M
         return pages
     rp = _robots(site_url, s)
     seen = {urldefrag(site_url)[0]}
+    prefixes = [scope_prefix(site_url)]
     frontier = [(site_url, first_html)]
-    for _level in range(depth):
+    for level in range(depth):
         nxt = []
         for page_url, html in frontier:
-            if extract_links(html, page_url):
+            if has_content(html, page_url):
                 continue  # this branch found its files: don't go deeper here
-            links, _ = page_links(html, page_url, site_url)
+            links, _ = page_links(html, page_url, site_url, prefixes)
+            if level == 0 and not [u for u in links if u not in seen]:
+                links, _ = page_links(html, page_url, site_url, (), content_only=True)
+                for u in links:
+                    px = scope_prefix(u)
+                    if px != "/" and px not in prefixes:
+                        prefixes.append(px)
             for u in links:
                 if u in seen or len(pages) >= max_pages:
                     continue
@@ -204,18 +246,59 @@ def crawl(site_url: str, first_html: str, depth: int, max_pages: int = DEFAULT_M
     return pages
 
 
+# ------------------------------------------------------------------ "why 0?"
+
+def explain(pages) -> str:
+    """One plain Hinglish line on why these pages gave no file and no YouTube
+    video. pages: [(url, html, title)]."""
+    html = " ".join(h for _, h, _ in pages)[:3_000_000]
+    low = html.lower()
+    n_links = sum(len(_PageParser_hrefs(h)) for _, h, _ in pages[:1])
+    if ".m3u8" in low or ".mpd" in low or "application/x-mpegurl" in low:
+        return ("is site pe videos stream (m3u8/HLS) ke roop mein hain, file nahi. "
+                "Bot streams download nahi karta, isliye 0.")
+    js_app = ("self.__next_f" in html or 'id="__next"' in html or 'id="root"></div>' in html
+              or 'id="app"></div>' in html or "__nuxt" in low or "ng-version" in low)
+    if js_app and n_links < 15:
+        return ("ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, "
+                "HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.")
+    if re.search(r'type=["\']password["\']', low) or "please login" in low or "please log in" in low:
+        return "content login ke peeche lagta hai. Bot login nahi karta, isliye 0."
+    return (f"{len(pages)} page(s) dekhe, kisi pe seedha file link (.mp4/.pdf/.apk/.zip…) "
+            "ya YouTube video nahi mila.")
+
+
+def _PageParser_hrefs(html):
+    p = _PageParser()
+    try:
+        p.feed(html)
+    except Exception:
+        return []
+    return p.hrefs
+
+
+# why the last list_items() of a site gave nothing (site url -> line), read by main.py
+LAST_NOTES = {}
+
+
 def list_items(site_url: str, html: str = None, depth: int = 0, max_pages: int = DEFAULT_MAX_PAGES, **kw):
     if html is None:
         html = http().get(site_url, timeout=30).text
     if not depth:
-        return items_from_html(html, site_url)
+        pages = [(site_url, html, page_links(html, site_url, site_url)[1])]
+    else:
+        pages = crawl(site_url, html, depth, max_pages, **kw)
     out, seen = [], set()
-    for page_url, body, title in crawl(site_url, html, depth, max_pages, **kw):
-        for it in items_from_html(body, page_url):
+    for page_url, body, title in pages:
+        for it in items_from_html(body, page_url, title if page_url != site_url else ""):
             if it.id in seen:
                 continue
             seen.add(it.id)
-            if page_url != site_url and title:
+            if page_url != site_url and title and it.kind != "youtube":
                 it.caption = f"{title[:80]} · {it.caption}"
             out.append(it)
+    if out:
+        LAST_NOTES.pop(site_url, None)
+    else:
+        LAST_NOTES[site_url] = explain(pages)
     return out

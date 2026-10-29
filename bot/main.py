@@ -25,31 +25,38 @@ from .util import http, human_size, ist, now_iso, parse_iso, redact, safe_name
 from .security import safe_request, validate_url_shape
 
 USERBOT_LIMIT = 2_000_000_000
-SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 10)
+SYNC_EVERY_MIN = int(os.environ.get("SYNC_EVERY_MIN") or 25)  # cron runs every 30 min
 MAX_FILES_PER_RUN = int(os.environ.get("MAX_FILES_PER_RUN") or 15)
 MAX_RUN_SECONDS = int(os.environ.get("MAX_RUN_MINUTES") or 40) * 60
 DEFAULT_SITE_LIMIT = 3  # max new files per site per sync (change per site: /addsite <url> <limit>)
 MAX_TRIES = 3  # after 3 failed tries a file is skipped (use /retry to try again)
 START = time.time()
 
-HELP = """🤖 site2tg-bot commands
+HELP = """🤖 site2tg-bot — saare commands
 
-/addsite <url> [limit] [depth] — nayi website jodo (limit = ek sync mein max nayi files, default 3; depth = andar ke pages kitne level, 0-5, default 5)
+🌐 Websites (files → Telegram channel)
+/addsite <url> [limit] [depth] — website jodo (limit = ek sync mein max nayi files, default 3; depth = andar ke pages 0-5, default 5). YouTube link do toh wo YouTube tracker mein chala jaata hai
 /removesite <url> — website hatao
-/sites — saari websites ki list
-/sync — abhi sync karo (agle run pe)
-/status — kitni files gayi, last sync, errors
+/sites — saari websites, kitni files gayi, 0 kyun aayi
+/sync — abhi sync karo
 /retry — jo files 3 baar fail hui, unhe dobara try karo
-/id — aapka OWNER_ID aur CHANNEL_ID
-/get <link> — ek direct file link (…/video.mp4, .apk, .pdf) turant download karke channel mein
-/addplaylist <YouTube playlist URL/ID> — public playlist ko one-by-one link queue mein jodo
-/addyoutube <channel URL/UC... ID> — public channel ke naye uploads track karo
-/youtubes — tracked YouTube playlists/channels dekho
-/removeyoutube <URL/ID> — tracker hatao
-/yt <YouTube video URL> — video ka watch link channel mein post karo (media download nahi)
-/help — ye message
+/get <link> — ek direct file link (…/video.mp4, .apk, .pdf) turant channel mein
 
-Note: Vercel webhook laga hai toh /menu, /status, /sites turant; add/remove/sync/retry ka "⏳ chal raha hai" turant aur result ~1-2 min mein. Webhook nahi laga toh bot har ~1 ghante pe jaagta hai."""
+▶️ YouTube (sirf watch LINK post hota hai, video download nahi)
+/yt <video link> — ek video ka link channel mein
+/addplaylist <playlist link> — playlist ki saari videos ke link, ek-ek karke
+/addyoutube <channel link ya @naam> — channel ki nayi videos ke link
+/youtubes — kaunse playlist/channel track ho rahe hain
+/removeyoutube <link/ID> — tracker hatao
+
+📊 Baaki
+/status — files kitni gayi, last sync, errors, har site ka haal
+/menu — buttons wala menu
+/id — aapka OWNER_ID aur CHANNEL_ID
+/help — ye message
+(Vercel laga hai toh koi bhi sawaal seedha likho, AI jawab dega)
+
+Auto-sync: GitHub har 30 min chalata hai (GitHub kabhi-kabhi late karta hai). Vercel laga hai toh /status /sites /youtubes turant, aur add/remove/sync ka result ~1-2 min mein."""
 
 
 VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi", ".3gp"}
@@ -178,7 +185,16 @@ def cmd_addsite(state, arg):
     state["sent"].setdefault(url, [])
     state["sync_requested"] = True
     kind = "video catalog site" if name == "tgvideo" else f"normal page + andar ke pages ({depth} level)"
-    return (f"✅ Site jod di: {url}\nType: {kind}\nAbhi {len(items)} files mili. "
+    n_yt = sum(1 for i in items if i.kind == "youtube")
+    n_files = len(items) - n_yt
+    found = f"Abhi {n_files} files mili."
+    if n_yt:
+        found += f" {n_yt} YouTube videos bhi mili: unke watch LINK ek-ek karke post honge (video download nahi)."
+    if not items:
+        note = adapters.note_for(url)
+        if note:
+            found += f"\n⚠️ 0 kyun: {note}"
+    return (f"✅ Site jod di: {url}\nType: {kind}\n{found}\n"
             f"Har sync mein max {limit} nayi files jayengi. Sync isi run mein shuru ho raha hai.")
 
 
@@ -191,31 +207,56 @@ def cmd_removesite(state, arg):
     state["sent"].pop(url, None)
     state["hashes"].pop(url, None)
     state["big_pending"] = {k: v for k, v in state["big_pending"].items() if v.get("site") != url}
+    (state.get("site_notes") or {}).pop(url, None)
+    (state.get("youtube_pending") or {}).pop(_site_yt_key(url), None)
     # ids of this site's items in "fails" are harmless; they are cleared on /retry
     return f"🗑 Hata di: {url}"
+
+
+def _site_yt_key(url):
+    return "site:" + site_key(url)
+
+
+def _site_line(state, i, s):
+    url = s["url"]
+    files = len(state["sent"].get(url, []))
+    yt_key = _site_yt_key(url)
+    yt_posted = len((state.get("youtube_seen") or {}).get(yt_key, []))
+    yt_queue = len((state.get("youtube_pending") or {}).get(yt_key, []))
+    line = (f"{i}. {url} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync"
+            + (f", {s['depth']} level andar" if s.get("depth") else "") + f") — {files} files bheji")
+    if yt_posted or yt_queue:
+        line += f", YouTube links: {yt_posted} post, {yt_queue} line mein"
+    note = (state.get("site_notes") or {}).get(url)
+    if note:
+        line += f"\n   ⚠️ 0 kyun: {note}"
+    return line
 
 
 def cmd_sites(state, _):
     if not state["sites"]:
         return "Abhi koi site nahi hai. /addsite <url> se jodo."
-    lines = [f"{i}. {s['url']} ({s['adapter']}, max {s.get('limit', DEFAULT_SITE_LIMIT)}/sync"
-             + (f", {s['depth']} level andar" if s.get("depth") else "") + ") — "
-             f"{len(state['sent'].get(s['url'], []))} files bheji"
-             for i, s in enumerate(state["sites"], 1)]
+    lines = [_site_line(state, i, s) for i, s in enumerate(state["sites"], 1)]
     return "🌐 Websites:\n" + "\n".join(lines)
 
 
 def cmd_status(state, _):
     big = state.get("big_pending") or {}
+    yt_pending = sum(len(v) for v in (state.get("youtube_pending") or {}).values())
     lines = [
         "📊 Status",
-        f"Websites: {len(state['sites'])}",
+        f"Websites: {len(state['sites'])} · YouTube trackers: {len(state.get('youtube_sources') or [])}",
         f"Total files bheji: {state.get('files_sent_total', 0)}",
         f"Last sync: {ist(state.get('last_sync'))}",
         f"Last result: {state.get('last_result') or '-'}",
+        f"YouTube links line mein: {yt_pending}",
         f"Channels: {routing_note()}",
         f"Badi files (>50 MB) ke liye userbot: {'ON ✅' if userbot.available() else 'OFF (secrets nahi hain)'}",
     ]
+    notes = state.get("site_notes") or {}
+    for s in state["sites"]:
+        if notes.get(s["url"]):
+            lines.append(f"\n⚠️ {s['url']}\n0 kyun: {notes[s['url']]}")
     if big:
         lines.append(f"\n⚠️ {len(big)} badi files ruki hui hain (userbot secrets daalo):")
         for v in list(big.values())[:10]:
@@ -270,8 +311,12 @@ def cmd_add_youtube_source(state, arg, kind):
     state["youtube_seen"].setdefault(key, [])
     state["youtube_pending"].setdefault(key, [])
     state["sync_requested"] = True
-    return ("✅ Public YouTube source add ho gaya. Available links next sync mein queue honge, "
-            "phir ek-ek karke channel par post honge. Ye watch links hain, video files nahi.\n" + source["url"])
+    if kind == "channel":
+        how = "Abhi ki 3 latest videos ke link aayenge, phir har nayi video ka link."
+    else:
+        how = "Playlist ki saari videos ke link ek-ek karke aayenge (har sync mein kuch)."
+    return ("✅ YouTube " + ("channel" if kind == "channel" else "playlist") + " add ho gaya.\n" + how +
+            "\nSirf watch LINK post hota hai, video download nahi.\n" + source["url"])
 
 
 def cmd_addplaylist(state, arg):
@@ -302,7 +347,8 @@ def cmd_removeyoutube(state, arg):
     sources = state.get("youtube_sources") or []
     match = None
     for source in sources:
-        if value in (source.get("id"), source.get("url")) or value in source.get("url", ""):
+        sid = source.get("id") or ""
+        if value in (sid, source.get("url")) or (len(sid) >= 10 and sid in value):
             match = source
             break
     if not match:
@@ -314,49 +360,134 @@ def cmd_removeyoutube(state, arg):
     return f"🗑 YouTube tracker hata diya: {match['url']}"
 
 
-def cmd_yt(bot, arg, default_channel):
+def cmd_yt(bot, arg, default_channel, state=None):
     if not arg:
         return "Aise likho: /yt https://www.youtube.com/watch?v=VIDEO_ID"
+    link = arg.split()[0].strip("<>")
     try:
-        url, video_id = youtube_tracker.parse_video_url(arg.split()[0])
+        url, video_id = youtube_tracker.parse_video_url(link)
+    except Exception as e:
+        if youtube_tracker.classify(link) == "playlist":
+            return "Ye playlist ka link hai. Poori playlist ke liye: /addplaylist " + link
+        if youtube_tracker.classify(link) == "channel":
+            return "Ye channel ka link hai. Channel ki videos ke liye: /addyoutube " + link
+        return f"Link post nahi hua: {redact(e)}"
+    posted = None
+    if state is not None:
+        posted = state.setdefault("youtube_seen", {}).setdefault("manual", [])
+        if video_id in posted:
+            return f"Ye video ka link pehle hi channel mein post ho chuka hai: {url}"
+    try:
         channel = os.environ.get("CHANNEL_ID_VIDEO") or default_channel
         bot.send_message(channel, f"▶️ YouTube video link\n{url}")
-        return f"✅ Watch link channel par post kar diya: {video_id}\nNote: YouTube media download nahi hua."
     except Exception as e:
         return f"Link post nahi hua: {redact(e)}"
+    if posted is not None:
+        posted.append(video_id)
+    return f"✅ Watch link channel mein post kar diya: {url}\n(Sirf link, video download nahi hota.)"
+
+
+def route_youtube(bot, state, cmd, arg):
+    """/addsite, /addyoutube or /addplaylist with a YouTube link: hand it to
+    the right YouTube action instead of failing. None = not a YouTube case."""
+    if cmd not in ("/addsite", "/addyoutube", "/addplaylist") or not arg:
+        return None
+    link = arg.split()[0].strip("<>")
+    kind = youtube_tracker.classify(link)
+    if cmd == "/addsite":
+        if kind is None and not youtube_tracker.is_youtube_url(link):
+            return None
+        lead = "YouTube website ki tarah add nahi hota (bot YouTube video download nahi karta). "
+    else:
+        lead = ""
+    if kind == "video":
+        return (lead + "Ye ek single video ka link hai, toh iska watch link post kar raha hoon.\n"
+                + cmd_yt(bot, link, os.environ.get("CHANNEL_ID"), state)
+                + "\nPoori playlist ke liye /addplaylist <playlist link>, channel ke liye /addyoutube <channel link>.")
+    if kind == "playlist" and cmd != "/addplaylist":
+        return lead + "Ye playlist hai, YouTube tracker mein daal di:\n" + cmd_add_youtube_source(state, link, "playlist")
+    if kind == "channel" and cmd != "/addyoutube":
+        return lead + "Ye channel hai, YouTube tracker mein daal diya:\n" + cmd_add_youtube_source(state, link, "channel")
+    if kind is None:
+        return lead + "Is YouTube link ko samajh nahi paya. /yt <video link>, /addplaylist <playlist link> ya /addyoutube <channel link> use karo."
+    return None
+
+
+CHANNEL_FIRST_LINKS = 3  # a newly added channel: post its latest 3, then only new uploads
+
+
+def _add_error_once(state, msg):
+    errs = state.get("errors") or []
+    if not errs or errs[-1].get("msg") != msg:
+        st.add_error(state, msg, now_iso())
+
+
+def queue_site_youtube(state, site_url, items, title_of=None):
+    """YouTube videos found on a website go to that site's link queue."""
+    key = _site_yt_key(site_url)
+    seen = state.setdefault("youtube_seen", {}).setdefault(key, [])
+    pending = state.setdefault("youtube_pending", {}).setdefault(key, [])
+    known = set(seen) | {v.get("id") for v in pending}
+    fresh = []
+    for it in items:
+        vid = it.id.split(":", 1)[1]
+        if vid in known:
+            continue
+        known.add(vid)
+        fresh.append({"id": vid, "title": it.caption or "YouTube video", "url": it.url})
+    # sites list newest first, so a video found later is a new upload: it goes
+    # to the front of the line instead of waiting behind the old backlog
+    pending[:0] = fresh
+    added = len(fresh)
+    if not pending:
+        state["youtube_pending"].pop(key, None)
+    return added
 
 
 def sync_youtube_links(bot, state, channel_id):
-    """Queue public watch links and post them one at a time; never downloads media."""
+    """Queue public watch links and post them a few at a time (oldest first);
+    never downloads media. Sources: /addplaylist, /addyoutube, and YouTube
+    videos found on added websites."""
     sources = state.get("youtube_sources") or []
-    if not sources:
-        return 0, 0
     state.setdefault("youtube_seen", {})
     state.setdefault("youtube_pending", {})
     max_links = max(1, int(os.environ.get("MAX_YOUTUBE_LINKS_PER_RUN") or 5))
     posted, failed = 0, 0
     target = os.environ.get("CHANNEL_ID_VIDEO") or channel_id
+    queues = []
     for source in sources:
         key = _youtube_source_key(source)
         seen = state["youtube_seen"].setdefault(key, [])
         pending = state["youtube_pending"].setdefault(key, [])
         try:
             entries = youtube_tracker.fetch_entries(source)
+            if source["kind"] == "channel" and not source.get("seeded") and not seen and not pending:
+                # first look at a channel: its old videos count as seen
+                for entry in entries[:-CHANNEL_FIRST_LINKS]:
+                    seen.append(entry["id"])
+            source["seeded"] = True
             known = set(seen) | {v.get("id") for v in pending}
             for entry in entries:
                 if entry["id"] not in known:
                     pending.append(entry)
                     known.add(entry["id"])
         except Exception as e:
-            failed += 1
-            st.add_error(state, f"YouTube {source['url']}: {redact(e)}", now_iso())
+            # not counted as a failed post (that would message the owner every run)
+            _add_error_once(state, f"YouTube {source['url']}: {redact(e)}")
             log(f"YouTube tracker fetch failed: {redact(e)}")
-        # Preserve order and a durable queue across scheduled workflow runs.
-        batch = pending[:max_links]
-        for entry in batch:
+        queues.append((key, source["url"]))
+    for site in state.get("sites") or []:
+        key = _site_yt_key(site["url"])
+        if state["youtube_pending"].get(key):
+            state["youtube_seen"].setdefault(key, [])
+            queues.append((key, site["url"]))
+    for key, label in queues:
+        seen = state["youtube_seen"][key]
+        pending = state["youtube_pending"].get(key) or []
+        for entry in pending[:max_links]:
             try:
                 title = (entry.get("title") or "YouTube video").replace("\n", " ")[:180]
-                bot.send_message(target, f"▶️ {title}\n{entry['url']}\nSource: {source['url']}")
+                bot.send_message(target, f"▶️ {title}\n{entry['url']}\nSource: {label}")
                 seen.append(entry["id"])
                 pending.remove(entry)
                 posted += 1
@@ -366,6 +497,8 @@ def sync_youtube_links(bot, state, channel_id):
                 st.add_error(state, f"YouTube post {entry.get('id')}: {redact(e)}", now_iso())
                 log(f"YouTube link post failed: {redact(e)}")
                 break
+        if key.startswith("site:") and not pending:
+            state["youtube_pending"].pop(key, None)
     return posted, failed
 
 
@@ -440,10 +573,15 @@ def run_command(bot, state, text, chat_id, edit_message_id=None):
     parts = text.split(maxsplit=1)
     cmd = parts[0].split("@")[0].lower()
     arg = parts[1].strip() if len(parts) > 1 else ""
-    if cmd == "/get":
+    routed = route_youtube(bot, state, cmd, arg)
+    if routed is not None:
+        reply = routed
+    elif cmd == "/get":
         reply = cmd_get(bot, state, arg, os.environ.get("CHANNEL_ID"))
     elif cmd == "/yt":
-        reply = cmd_yt(bot, arg, os.environ.get("CHANNEL_ID"))
+        reply = cmd_yt(bot, arg, os.environ.get("CHANNEL_ID"), state)
+    elif cmd == "/menu":
+        reply = HELP + "\n\n(Buttons wala menu Vercel webhook lagne ke baad aata hai.)"
     else:
         fn = COMMANDS.get(cmd)
         reply = fn(state, arg) if fn else "Ye command nahi pata. /help dekho."
@@ -589,12 +727,22 @@ def sync(bot, state, channel_id):
             url = site["url"]
             done = set(state["sent"].setdefault(url, []))
             site_limit = int(site.get("limit") or DEFAULT_SITE_LIMIT)
+            notes = state.setdefault("site_notes", {})
             try:
                 name, items = adapters.list_items(url, site.get("adapter"), depth=int(site.get("depth") or 0))
             except Exception as e:
                 failed += 1
                 st.add_error(state, f"{url}: list failed: {redact(e)}", now_iso())
+                notes[url] = f"site khul nahi rahi ({redact(e)[:120]})"
                 continue
+            yt_items = [i for i in items if i.kind == "youtube"]
+            items = [i for i in items if i.kind != "youtube"]
+            if yt_items:
+                queue_site_youtube(state, url, yt_items)
+            if items or yt_items:
+                notes.pop(url, None)
+            elif adapters.note_for(url):
+                notes[url] = adapters.note_for(url)
             # pick this sync's new files for the site
             todo = []
             for item in items:
@@ -758,8 +906,12 @@ def main():
             sent, failed, big = sync(bot, state, channel_id)
             log(f"sync: {state['last_result']}")
             if sent or failed or big or asked:
+                msg = f"🔄 Sync: {state['last_result']}."
+                if asked:
+                    for url, note in (state.get("site_notes") or {}).items():
+                        msg += f"\n⚠️ {url}: 0 kyun: {note}"
                 try:
-                    bot.send_message(owner_id, f"🔄 Sync: {state['last_result']}. /status se details dekho.")
+                    bot.send_message(owner_id, msg + "\n/status se details dekho.")
                 except TelegramError as e:
                     log(f"notify failed: {e}")
     finally:
