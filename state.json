@@ -15,12 +15,13 @@
   ]
  },
  "last_result": "5 bheji, 0 fail, 0 badi files ruki (files: 0, YouTube links: 5)",
- "last_sync": "2026-10-29T01:59:46Z",
+ "last_sync": "2026-10-29T02:02:53Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
   "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [],
   "https://spidyiq.vercel.app/course/9854/English": [],
+  "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA": [],
   "https://videoclasses.vercel.app/": [
    "tgvideo:3723101547:4",
    "tgvideo:3723101547:5",
@@ -33,7 +34,8 @@
   ]
  },
  "site_notes": {
-  "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0."
+  "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.",
+  "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA": "content login ke peeche lagta hai. Bot login nahi karta, isliye 0."
  },
  "sites": [
   {
@@ -55,36 +57,18 @@
    "depth": 5,
    "limit": 3,
    "url": "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams"
+  },
+  {
+   "adapter": "generic",
+   "added": "2026-10-29T02:01:41Z",
+   "depth": 5,
+   "limit": 3,
+   "url": "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA"
   }
  ],
  "sync_requested": false,
  "youtube_pending": {
   "site:examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [
-   {
-    "id": "q_fXzgdjXso",
-    "title": "08 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
-    "url": "https://www.youtube.com/watch?v=q_fXzgdjXso"
-   },
-   {
-    "id": "ysuP3yjmMwI",
-    "title": "7 October Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
-    "url": "https://www.youtube.com/watch?v=ysuP3yjmMwI"
-   },
-   {
-    "id": "4lL-rAoVcaQ",
-    "title": "06 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
-    "url": "https://www.youtube.com/watch?v=4lL-rAoVcaQ"
-   },
-   {
-    "id": "4OuJZ2VpX3U",
-    "title": "03 October 2026 Current Affairs | Today GK in Hindi & English | Important Current Affairs",
-    "url": "https://www.youtube.com/watch?v=4OuJZ2VpX3U"
-   },
-   {
-    "id": "h4JsQF5i-qE",
-    "title": "02 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
-    "url": "https://www.youtube.com/watch?v=h4JsQF5i-qE"
-   },
    {
     "id": "Q_zBXS5BKTw",
     "title": "01 October Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
@@ -278,7 +262,12 @@
    "yAcNS0JFX8s",
    "NTWZz2dZGPA",
    "G41ojyyL7uY",
-   "Mp17a5_OYhc"
+   "Mp17a5_OYhc",
+   "q_fXzgdjXso",
+   "ysuP3yjmMwI",
+   "4lL-rAoVcaQ",
+   "4OuJZ2VpX3U",
+   "h4JsQF5i-qE"
   ]
  },
  "youtube_sources": []
