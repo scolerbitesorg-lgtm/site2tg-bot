@@ -57,6 +57,22 @@ jobs:
       - name: Install
         run: pip install --upgrade -r requirements.txt
 
+      - name: Prepare optional authorized YouTube cookies
+        env:
+          YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
+        run: |
+          if [ -z "$YOUTUBE_COOKIES_B64" ]; then
+            echo "YTDLP_COOKIES_FILE=" >> "$GITHUB_ENV"
+            echo "No optional YouTube cookie secret configured."
+            exit 0
+          fi
+          umask 077
+          cookie_dir="$RUNNER_TEMP/site2tg-secrets"
+          mkdir -p "$cookie_dir"
+          printf '%s' "$YOUTUBE_COOKIES_B64" | base64 --decode > "$cookie_dir/youtube_cookies.txt"
+          chmod 600 "$cookie_dir/youtube_cookies.txt"
+          echo "YTDLP_COOKIES_FILE=$cookie_dir/youtube_cookies.txt" >> "$GITHUB_ENV"
+
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -77,6 +93,12 @@ jobs:
           INJECTED_COMMAND: ${{ inputs.command }}
           ACK_MESSAGE_ID: ${{ inputs.ack_message_id }}
         run: python -m bot.main
+
+      - name: Remove temporary YouTube cookie file
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/site2tg-secrets/youtube_cookies.txt"
+          rmdir "$RUNNER_TEMP/site2tg-secrets" 2>/dev/null || true
 
       - name: Save state.json
         if: always()
