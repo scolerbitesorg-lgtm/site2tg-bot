@@ -15,7 +15,7 @@
   ]
  },
  "last_result": "5 bheji, 0 fail, 0 badi files ruki (files: 0, YouTube links: 5)",
- "last_sync": "2026-10-29T01:56:59Z",
+ "last_sync": "2026-10-29T01:58:23Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
@@ -60,31 +60,6 @@
  "sync_requested": false,
  "youtube_pending": {
   "site:examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [
-   {
-    "id": "HqtVEHX2sX0",
-    "title": "18 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
-    "url": "https://www.youtube.com/watch?v=HqtVEHX2sX0"
-   },
-   {
-    "id": "PsRDFqWqoss",
-    "title": "17 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
-    "url": "https://www.youtube.com/watch?v=PsRDFqWqoss"
-   },
-   {
-    "id": "jr3XpefLwVk",
-    "title": "16 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
-    "url": "https://www.youtube.com/watch?v=jr3XpefLwVk"
-   },
-   {
-    "id": "myDfCehXmyE",
-    "title": "15 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
-    "url": "https://www.youtube.com/watch?v=myDfCehXmyE"
-   },
-   {
-    "id": "4aSdK3jzORg",
-    "title": "14 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
-    "url": "https://www.youtube.com/watch?v=4aSdK3jzORg"
-   },
    {
     "id": "axxojYMNNZI",
     "title": "13 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
@@ -318,7 +293,12 @@
    "_5zQmUXEGH8",
    "F3SQWzhTtAI",
    "MKegz56mJDU",
-   "dNgZ4b5Dt-Q"
+   "dNgZ4b5Dt-Q",
+   "HqtVEHX2sX0",
+   "PsRDFqWqoss",
+   "jr3XpefLwVk",
+   "myDfCehXmyE",
+   "4aSdK3jzORg"
   ]
  },
  "youtube_sources": []
