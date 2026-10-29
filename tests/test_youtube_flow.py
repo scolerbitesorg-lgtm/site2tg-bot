@@ -36,7 +36,9 @@ def fresh(monkeypatch, tmp_path):
 
 def fake_download(monkeypatch, tmp_path):
     def download(url):
-        path = tmp_path / (url.rsplit("=", 1)[-1] + ".mp4")
+        folder = tmp_path / ("download_" + url.rsplit("=", 1)[-1])
+        folder.mkdir(exist_ok=True)
+        path = folder / (url.rsplit("=", 1)[-1] + ".mp4")
         path.write_bytes(b"mock video bytes")
         return path.name, str(path), path.stat().st_size
     monkeypatch.setattr(m, "download_youtube_video", download)
