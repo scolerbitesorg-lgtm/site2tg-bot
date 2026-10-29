@@ -383,18 +383,17 @@ def cmd_yt(bot, arg, default_channel, state=None):
     try:
         channel = os.environ.get("CHANNEL_ID_VIDEO") or default_channel
         filename, path, size = download_youtube_video(url)
-        try:
-            caption = f"▶️ {filename.rsplit('.', 1)[0]}\n{url}"
-            if size <= BOT_UPLOAD_LIMIT:
-                bot.send_file(channel, path, filename, caption, "video")
-            elif userbot.available():
-                userbot.send_big(channel, path, caption, "video")
-            else:
-                raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
-        finally:
-            if os.path.exists(path):
-                os.remove(path)
-            shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+        caption = f"▶️ {filename.rsplit('.', 1)[0]}\n{url}"
+        if size <= BOT_UPLOAD_LIMIT:
+            bot.send_file(channel, path, filename, caption, "video")
+        elif userbot.available():
+            userbot.send_big(channel, path, caption, "video")
+        else:
+            raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+        # Delete only after Telegram upload call confirms success.
+        if os.path.exists(path):
+            os.remove(path)
+        shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         if posted is not None:
             posted.append(video_id)
         return f"✅ Video download karke Telegram par upload kar di: {filename} ({human_size(size)})"
@@ -590,18 +589,17 @@ def sync_youtube_links(bot, state, channel_id):
                 if parsed_id != video_id:
                     raise RuntimeError("Video ID URL se match nahi karti.")
                 title, path, size = download_youtube_video(canonical_url)
-                try:
-                    caption = f"▶️ {(entry.get('title') or title).replace(chr(10), ' ')[:180]}\nSource: {label}\n{canonical_url}"
-                    if size <= BOT_UPLOAD_LIMIT:
-                        bot.send_file(target, path, title, caption, "video")
-                    elif userbot.available():
-                        userbot.send_big(target, path, caption, "video")
-                    else:
-                        raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
-                finally:
-                    if os.path.exists(path):
-                        os.remove(path)
-                    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+                caption = f"▶️ {(entry.get('title') or title).replace(chr(10), ' ')[:180]}\nSource: {label}\n{canonical_url}"
+                if size <= BOT_UPLOAD_LIMIT:
+                    bot.send_file(target, path, title, caption, "video")
+                elif userbot.available():
+                    userbot.send_big(target, path, caption, "video")
+                else:
+                    raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+                # Acknowledge/delete only after Telegram confirms upload.
+                if os.path.exists(path):
+                    os.remove(path)
+                shutil.rmtree(os.path.dirname(path), ignore_errors=True)
                 seen.append(video_id)
                 pending.remove(entry)
                 posted += 1
@@ -611,9 +609,13 @@ def sync_youtube_links(bot, state, channel_id):
             except Exception as e:
                 failed += 1
                 processed += 1
+                entry["attempts"] = int(entry.get("attempts") or 0) + 1
                 st.add_error(state, f"YouTube video {video_id}: {redact(e)}", now_iso())
-                log(f"YouTube video upload failed: {redact(e)}")
-                # Keep it queued for retry; do not send a link as a fake success.
+                log(f"YouTube video upload failed (attempt {entry['attempts']}/{YTDLP_MAX_ATTEMPTS}): {redact(e)}")
+                if entry["attempts"] >= YTDLP_MAX_ATTEMPTS:
+                    pending.remove(entry)
+                    _add_error_once(state, f"YouTube video {video_id} skipped after {YTDLP_MAX_ATTEMPTS} failed attempts.")
+                # Keep retry count bounded; never post a link as fake success.
                 break
         if key.startswith("site:") and not pending:
             state["youtube_pending"].pop(key, None)
