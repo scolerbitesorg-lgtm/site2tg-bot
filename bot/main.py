@@ -312,9 +312,9 @@ def cmd_add_youtube_source(state, arg, kind):
     state["youtube_pending"].setdefault(key, [])
     state["sync_requested"] = True
     if kind == "channel":
-        how = "Abhi ki 3 latest videos ke link aayenge, phir har nayi video ka link."
+        how = "Abhi ki 3 latest videos download karke upload hongi, phir har nayi video."
     else:
-        how = "Playlist ki saari videos ke link ek-ek karke aayenge (har sync mein kuch)."
+        how = "Playlist ki videos download karke upload hongi (har sync mein kuch)."
     return ("✅ YouTube " + ("channel" if kind == "channel" else "playlist") + " add ho gaya.\n" + how +
             "\nSirf watch LINK post hota hai, video download nahi.\n" + source["url"])
 
@@ -391,6 +391,7 @@ def cmd_yt(bot, arg, default_channel, state=None):
         finally:
             if os.path.exists(path):
                 os.remove(path)
+            shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         if posted is not None:
             posted.append(video_id)
         return f"✅ Video download karke Telegram par upload kar di: {filename} ({human_size(size)})"
@@ -412,7 +413,7 @@ def route_youtube(bot, state, cmd, arg):
     else:
         lead = ""
     if kind == "video":
-        return (lead + "Ye ek single video ka link hai, toh iska watch link post kar raha hoon.\n"
+        return (lead + "Ye ek single video hai; download karke upload karne ki koshish kar raha hoon.\n"
                 + cmd_yt(bot, link, os.environ.get("CHANNEL_ID"), state)
                 + "\nPoori playlist ke liye /addplaylist <playlist link>, channel ke liye /addyoutube <channel link>.")
     if kind == "playlist" and cmd != "/addplaylist":
@@ -465,7 +466,8 @@ def download_youtube_video(url):
 
     folder = tempfile.mkdtemp(prefix="site2tg-youtube-")
     opts = {
-        "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
+        "format": "best[ext=mp4][height<=720]/best[ext=mp4]/best[height<=720]/best",
+        "merge_output_format": "mp4",
         "outtmpl": os.path.join(folder, "%(id)s.%(ext)s"),
         "noplaylist": True,
         "quiet": True,
