@@ -212,6 +212,7 @@ def cmd_removesite(state, arg):
     state["big_pending"] = {k: v for k, v in state["big_pending"].items() if v.get("site") != url}
     (state.get("site_notes") or {}).pop(url, None)
     (state.get("youtube_pending") or {}).pop(_site_yt_key(url), None)
+    (state.get("youtube_skipped") or {}).pop(_site_yt_key(url), None)
     # ids of this site's items in "fails" are harmless; they are cleared on /retry
     return f"🗑 Hata di: {url}"
 
@@ -360,6 +361,7 @@ def cmd_removeyoutube(state, arg):
     key = _youtube_source_key(match)
     (state.get("youtube_seen") or {}).pop(key, None)
     (state.get("youtube_pending") or {}).pop(key, None)
+    (state.get("youtube_skipped") or {}).pop(key, None)
     return f"🗑 YouTube tracker hata diya: {match['url']}"
 
 
@@ -441,7 +443,8 @@ def queue_site_youtube(state, site_url, items, title_of=None):
     key = _site_yt_key(site_url)
     seen = state.setdefault("youtube_seen", {}).setdefault(key, [])
     pending = state.setdefault("youtube_pending", {}).setdefault(key, [])
-    known = set(seen) | {v.get("id") for v in pending}
+    skipped = state.setdefault("youtube_skipped", {}).setdefault(key, [])
+    known = set(seen) | set(skipped) | {v.get("id") for v in pending}
     fresh = []
     for it in items:
         vid = it.id.split(":", 1)[1]
@@ -546,6 +549,7 @@ def sync_youtube_links(bot, state, channel_id):
     sources = state.get("youtube_sources") or []
     state.setdefault("youtube_seen", {})
     state.setdefault("youtube_pending", {})
+    state.setdefault("youtube_skipped", {})
     max_videos = max(1, int(os.environ.get("MAX_YOUTUBE_VIDEOS_PER_RUN") or 2))
     posted, failed = 0, 0
     target = os.environ.get("CHANNEL_ID_VIDEO") or channel_id
@@ -554,13 +558,14 @@ def sync_youtube_links(bot, state, channel_id):
         key = _youtube_source_key(source)
         seen = state["youtube_seen"].setdefault(key, [])
         pending = state["youtube_pending"].setdefault(key, [])
+        skipped = state["youtube_skipped"].setdefault(key, [])
         try:
             entries = youtube_tracker.fetch_entries(source)
             if source["kind"] == "channel" and not source.get("seeded") and not seen and not pending:
                 for entry in entries[:-CHANNEL_FIRST_LINKS]:
                     seen.append(entry["id"])
             source["seeded"] = True
-            known = set(seen) | {v.get("id") for v in pending}
+            known = set(seen) | set(skipped) | {v.get("id") for v in pending}
             for entry in entries:
                 if entry["id"] not in known:
                     pending.append(entry)
@@ -614,6 +619,9 @@ def sync_youtube_links(bot, state, channel_id):
                 log(f"YouTube video upload failed (attempt {entry['attempts']}/{YTDLP_MAX_ATTEMPTS}): {redact(e)}")
                 if entry["attempts"] >= YTDLP_MAX_ATTEMPTS:
                     pending.remove(entry)
+                    skipped = state.setdefault("youtube_skipped", {}).setdefault(key, [])
+                    if video_id not in skipped:
+                        skipped.append(video_id)
                     _add_error_once(state, f"YouTube video {video_id} skipped after {YTDLP_MAX_ATTEMPTS} failed attempts.")
                 # Keep retry count bounded; never post a link as fake success.
                 break
