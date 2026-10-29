@@ -4,3 +4,21 @@ __pycache__/
 *.session-journal
 .env
 state.json.tmp
+
+# Secrets and local downloader artifacts
+cookies.txt
+cookies*.txt
+*.cookies
+secrets/
+**/secrets/
+.env.*
+!.env.example
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.m4v
+*.avi
+*.part
+*.ytdl
+*.log

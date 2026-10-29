@@ -10,6 +10,7 @@ when the Vercel webhook dispatches a command):
 3. save state.json (the workflow commits it)
 """
 import hashlib
+import threading
 import os
 import shutil
 import sys
@@ -31,6 +32,8 @@ MAX_RUN_SECONDS = int(os.environ.get("MAX_RUN_MINUTES") or 40) * 60
 DEFAULT_SITE_LIMIT = 3  # max new files per site per sync (change per site: /addsite <url> <limit>)
 MAX_TRIES = 3  # after 3 failed tries a file is skipped (use /retry to try again)
 START = time.time()
+YOUTUBE_DOWNLOAD_LOCK = threading.Lock()  # serialize yt-dlp downloads per worker
+YTDLP_MAX_ATTEMPTS = 3
 
 HELP = """🤖 site2tg-bot — saare commands
 
@@ -209,6 +212,7 @@ def cmd_removesite(state, arg):
     state["big_pending"] = {k: v for k, v in state["big_pending"].items() if v.get("site") != url}
     (state.get("site_notes") or {}).pop(url, None)
     (state.get("youtube_pending") or {}).pop(_site_yt_key(url), None)
+    (state.get("youtube_skipped") or {}).pop(_site_yt_key(url), None)
     # ids of this site's items in "fails" are harmless; they are cleared on /retry
     return f"🗑 Hata di: {url}"
 
@@ -357,6 +361,7 @@ def cmd_removeyoutube(state, arg):
     key = _youtube_source_key(match)
     (state.get("youtube_seen") or {}).pop(key, None)
     (state.get("youtube_pending") or {}).pop(key, None)
+    (state.get("youtube_skipped") or {}).pop(key, None)
     return f"🗑 YouTube tracker hata diya: {match['url']}"
 
 
@@ -380,18 +385,17 @@ def cmd_yt(bot, arg, default_channel, state=None):
     try:
         channel = os.environ.get("CHANNEL_ID_VIDEO") or default_channel
         filename, path, size = download_youtube_video(url)
-        try:
-            caption = f"▶️ {filename.rsplit('.', 1)[0]}\n{url}"
-            if size <= BOT_UPLOAD_LIMIT:
-                bot.send_file(channel, path, filename, caption, "video")
-            elif userbot.available():
-                userbot.send_big(channel, path, caption, "video")
-            else:
-                raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
-        finally:
-            if os.path.exists(path):
-                os.remove(path)
-            shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+        caption = f"▶️ {filename.rsplit('.', 1)[0]}\n{url}"
+        if size <= BOT_UPLOAD_LIMIT:
+            bot.send_file(channel, path, filename, caption, "video")
+        elif userbot.available():
+            userbot.send_big(channel, path, caption, "video")
+        else:
+            raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+        # Delete only after Telegram upload call confirms success.
+        if os.path.exists(path):
+            os.remove(path)
+        shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         if posted is not None:
             posted.append(video_id)
         return f"✅ Video download karke Telegram par upload kar di: {filename} ({human_size(size)})"
@@ -439,7 +443,8 @@ def queue_site_youtube(state, site_url, items, title_of=None):
     key = _site_yt_key(site_url)
     seen = state.setdefault("youtube_seen", {}).setdefault(key, [])
     pending = state.setdefault("youtube_pending", {}).setdefault(key, [])
-    known = set(seen) | {v.get("id") for v in pending}
+    skipped = state.setdefault("youtube_skipped", {}).setdefault(key, [])
+    known = set(seen) | set(skipped) | {v.get("id") for v in pending}
     fresh = []
     for it in items:
         vid = it.id.split(":", 1)[1]
@@ -457,13 +462,16 @@ def queue_site_youtube(state, site_url, items, title_of=None):
 
 
 def download_youtube_video(url):
-    """Download one public, non-DRM YouTube video to a temporary folder.
-    This intentionally uses no cookies, login, or DRM/license bypass."""
+    """Download one authorized, non-DRM YouTube video to a temporary folder.
+    Cookies are read only from YTDLP_COOKIES_FILE; never log or commit their contents."""
     try:
         import yt_dlp
     except ImportError as e:
-        raise RuntimeError("yt-dlp install nahi hua; requirements.txt update karke workflow rerun karo.") from e
+        raise RuntimeError("yt-dlp install nahi hua; requirements/workflow update karke rerun karo.") from e
 
+    cookie_file = os.environ.get("YTDLP_COOKIES_FILE", "").strip()
+    if cookie_file and not os.path.isfile(cookie_file):
+        raise RuntimeError("YTDLP_COOKIES_FILE set hai lekin cookies file nahi mili. Server secret file path check karo.")
     folder = tempfile.mkdtemp(prefix="site2tg-youtube-")
     opts = {
         "format": "best[ext=mp4][height<=720]/best[ext=mp4]/best[height<=720]/best",
@@ -476,32 +484,64 @@ def download_youtube_video(url):
         "ignoreerrors": False,
         "max_filesize": USERBOT_LIMIT,
         "socket_timeout": 25,
-        "retries": 2,
-        "fragment_retries": 2,
+        "retries": 3,
+        "fragment_retries": 3,
+        "sleep_requests": 1,
+        "sleep_interval": 5,
+        "max_sleep_interval": 10,
     }
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
+
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if not info:
-                raise RuntimeError("YouTube ne video metadata nahi di.")
-            path = ydl.prepare_filename(info)
-            if not os.path.isfile(path):
-                # yt-dlp may merge separate audio/video into mp4/mkv/webm.
-                base = os.path.splitext(path)[0]
-                path = next((base + ext for ext in (".mp4", ".mkv", ".webm", ".m4v")
-                             if os.path.isfile(base + ext)), "")
-            if not path or not os.path.isfile(path):
-                raise RuntimeError("Download complete hua lekin output video file nahi mili.")
-            size = os.path.getsize(path)
-            if size <= 0:
-                raise RuntimeError("Downloaded video empty hai.")
-            if size > USERBOT_LIMIT:
-                raise RuntimeError("Video 2 GB se badi hai; skip ki gayi.")
-            return os.path.basename(path), path, size
+        # GitHub Actions normally runs one job at a time, but this also protects
+        # webhook/manual command paths from parallel downloads in one process.
+        with YOUTUBE_DOWNLOAD_LOCK:
+            last_error = None
+            for attempt in range(1, YTDLP_MAX_ATTEMPTS + 1):
+                try:
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(url, download=True)
+                        if not info:
+                            raise RuntimeError("YouTube ne video metadata nahi di.")
+                        path = ydl.prepare_filename(info)
+                    if not os.path.isfile(path):
+                        base = os.path.splitext(path)[0]
+                        path = next((base + ext for ext in (".mp4", ".mkv", ".webm", ".m4v")
+                                     if os.path.isfile(base + ext)), "")
+                    if not path or not os.path.isfile(path):
+                        raise RuntimeError("Download complete hua lekin output video file nahi mili.")
+                    size = os.path.getsize(path)
+                    if size <= 0:
+                        raise RuntimeError("Downloaded video empty hai.")
+                    if size > USERBOT_LIMIT:
+                        raise RuntimeError("Video 2 GB se badi hai; skip ki gayi.")
+                    return os.path.basename(path), path, size
+                except Exception as exc:
+                    last_error = exc
+                    message = str(exc).lower()
+                    auth_required = ("sign in to confirm" in message or
+                                     "use --cookies-from-browser" in message or
+                                     "authentication" in message and "youtube" in message)
+                    if auth_required:
+                        if not cookie_file:
+                            raise RuntimeError(
+                                "YouTube authentication required. Apni authorized cookies ko server secret file mein rakho "
+                                "aur YTDLP_COOKIES_FILE=/app/secrets/youtube_cookies.txt set karo; cookies repo mein mat rakho."
+                            ) from exc
+                        # Do not repeatedly retry a known authentication failure.
+                        raise RuntimeError(
+                            "YouTube authentication failed with configured cookies. Refresh the authorized cookie file "
+                            "securely and verify its server-side path; no auth bypass was attempted."
+                        ) from exc
+                    if attempt < YTDLP_MAX_ATTEMPTS:
+                        shutil.rmtree(folder, ignore_errors=True)
+                        os.makedirs(folder, exist_ok=True)
+                        time.sleep(2 ** (attempt - 1))
+            raise RuntimeError(f"YouTube download failed after {YTDLP_MAX_ATTEMPTS} attempts: {redact(last_error)}") from last_error
     except Exception:
         shutil.rmtree(folder, ignore_errors=True)
         raise
-
 
 def sync_youtube_links(bot, state, channel_id):
     """Download and upload queued public, non-DRM YouTube videos.
@@ -509,6 +549,7 @@ def sync_youtube_links(bot, state, channel_id):
     sources = state.get("youtube_sources") or []
     state.setdefault("youtube_seen", {})
     state.setdefault("youtube_pending", {})
+    state.setdefault("youtube_skipped", {})
     max_videos = max(1, int(os.environ.get("MAX_YOUTUBE_VIDEOS_PER_RUN") or 2))
     posted, failed = 0, 0
     target = os.environ.get("CHANNEL_ID_VIDEO") or channel_id
@@ -517,13 +558,14 @@ def sync_youtube_links(bot, state, channel_id):
         key = _youtube_source_key(source)
         seen = state["youtube_seen"].setdefault(key, [])
         pending = state["youtube_pending"].setdefault(key, [])
+        skipped = state["youtube_skipped"].setdefault(key, [])
         try:
             entries = youtube_tracker.fetch_entries(source)
             if source["kind"] == "channel" and not source.get("seeded") and not seen and not pending:
                 for entry in entries[:-CHANNEL_FIRST_LINKS]:
                     seen.append(entry["id"])
             source["seeded"] = True
-            known = set(seen) | {v.get("id") for v in pending}
+            known = set(seen) | set(skipped) | {v.get("id") for v in pending}
             for entry in entries:
                 if entry["id"] not in known:
                     pending.append(entry)
@@ -552,18 +594,17 @@ def sync_youtube_links(bot, state, channel_id):
                 if parsed_id != video_id:
                     raise RuntimeError("Video ID URL se match nahi karti.")
                 title, path, size = download_youtube_video(canonical_url)
-                try:
-                    caption = f"▶️ {(entry.get('title') or title).replace(chr(10), ' ')[:180]}\nSource: {label}\n{canonical_url}"
-                    if size <= BOT_UPLOAD_LIMIT:
-                        bot.send_file(target, path, title, caption, "video")
-                    elif userbot.available():
-                        userbot.send_big(target, path, caption, "video")
-                    else:
-                        raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
-                finally:
-                    if os.path.exists(path):
-                        os.remove(path)
-                    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+                caption = f"▶️ {(entry.get('title') or title).replace(chr(10), ' ')[:180]}\nSource: {label}\n{canonical_url}"
+                if size <= BOT_UPLOAD_LIMIT:
+                    bot.send_file(target, path, title, caption, "video")
+                elif userbot.available():
+                    userbot.send_big(target, path, caption, "video")
+                else:
+                    raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+                # Acknowledge/delete only after Telegram confirms upload.
+                if os.path.exists(path):
+                    os.remove(path)
+                shutil.rmtree(os.path.dirname(path), ignore_errors=True)
                 seen.append(video_id)
                 pending.remove(entry)
                 posted += 1
@@ -573,9 +614,16 @@ def sync_youtube_links(bot, state, channel_id):
             except Exception as e:
                 failed += 1
                 processed += 1
+                entry["attempts"] = int(entry.get("attempts") or 0) + 1
                 st.add_error(state, f"YouTube video {video_id}: {redact(e)}", now_iso())
-                log(f"YouTube video upload failed: {redact(e)}")
-                # Keep it queued for retry; do not send a link as a fake success.
+                log(f"YouTube video upload failed (attempt {entry['attempts']}/{YTDLP_MAX_ATTEMPTS}): {redact(e)}")
+                if entry["attempts"] >= YTDLP_MAX_ATTEMPTS:
+                    pending.remove(entry)
+                    skipped = state.setdefault("youtube_skipped", {}).setdefault(key, [])
+                    if video_id not in skipped:
+                        skipped.append(video_id)
+                    _add_error_once(state, f"YouTube video {video_id} skipped after {YTDLP_MAX_ATTEMPTS} failed attempts.")
+                # Keep retry count bounded; never post a link as fake success.
                 break
         if key.startswith("site:") and not pending:
             state["youtube_pending"].pop(key, None)
