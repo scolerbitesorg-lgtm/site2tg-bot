@@ -42,10 +42,10 @@ HELP = """🤖 site2tg-bot — saare commands
 /retry — jo files 3 baar fail hui, unhe dobara try karo
 /get <link> — ek direct file link (…/video.mp4, .apk, .pdf) turant channel mein
 
-▶️ YouTube (sirf watch LINK post hota hai, video download nahi)
-/yt <video link> — ek video ka link channel mein
-/addplaylist <playlist link> — playlist ki saari videos ke link, ek-ek karke
-/addyoutube <channel link ya @naam> — channel ki nayi videos ke link
+▶️ YouTube (public, non-DRM videos; sirf content jise download/repost karne ki permission ho)
+/yt <video link> — ek video download karke channel mein
+/addplaylist <playlist link> — playlist ke videos download karke, ek-ek karke
+/addyoutube <channel link ya @naam> — channel ke naye videos download karke
 /youtubes — kaunse playlist/channel track ho rahe hain
 /removeyoutube <link/ID> — tracker hatao
 
@@ -376,15 +376,26 @@ def cmd_yt(bot, arg, default_channel, state=None):
     if state is not None:
         posted = state.setdefault("youtube_seen", {}).setdefault("manual", [])
         if video_id in posted:
-            return f"Ye video ka link pehle hi channel mein post ho chuka hai: {url}"
+            return f"Ye video pehle hi channel mein upload ho chuka hai: {url}"
     try:
         channel = os.environ.get("CHANNEL_ID_VIDEO") or default_channel
-        bot.send_message(channel, f"▶️ YouTube video link\n{url}")
+        filename, path, size = download_youtube_video(url)
+        try:
+            caption = f"▶️ {filename.rsplit('.', 1)[0]}\n{url}"
+            if size <= BOT_UPLOAD_LIMIT:
+                bot.send_file(channel, path, filename, caption, "video")
+            elif userbot.available():
+                userbot.send_big(channel, path, caption, "video")
+            else:
+                raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+        if posted is not None:
+            posted.append(video_id)
+        return f"✅ Video download karke Telegram par upload kar di: {filename} ({human_size(size)})"
     except Exception as e:
-        return f"Link post nahi hua: {redact(e)}"
-    if posted is not None:
-        posted.append(video_id)
-    return f"✅ Watch link channel mein post kar diya: {url}\n(Sirf link, video download nahi hota.)"
+        return f"Video upload nahi hui (link-only fallback nahi bheja): {redact(e)}"
 
 
 def route_youtube(bot, state, cmd, arg):
@@ -444,14 +455,58 @@ def queue_site_youtube(state, site_url, items, title_of=None):
     return added
 
 
+def download_youtube_video(url):
+    """Download one public, non-DRM YouTube video to a temporary folder.
+    This intentionally uses no cookies, login, or DRM/license bypass."""
+    try:
+        import yt_dlp
+    except ImportError as e:
+        raise RuntimeError("yt-dlp install nahi hua; requirements.txt update karke workflow rerun karo.") from e
+
+    folder = tempfile.mkdtemp(prefix="site2tg-youtube-")
+    opts = {
+        "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
+        "outtmpl": os.path.join(folder, "%(id)s.%(ext)s"),
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "ignoreerrors": False,
+        "max_filesize": USERBOT_LIMIT,
+        "socket_timeout": 25,
+        "retries": 2,
+        "fragment_retries": 2,
+    }
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            if not info:
+                raise RuntimeError("YouTube ne video metadata nahi di.")
+            path = ydl.prepare_filename(info)
+            if not os.path.isfile(path):
+                # yt-dlp may merge separate audio/video into mp4/mkv/webm.
+                base = os.path.splitext(path)[0]
+                path = next((base + ext for ext in (".mp4", ".mkv", ".webm", ".m4v")
+                             if os.path.isfile(base + ext)), "")
+            if not path or not os.path.isfile(path):
+                raise RuntimeError("Download complete hua lekin output video file nahi mili.")
+            size = os.path.getsize(path)
+            if size <= 0:
+                raise RuntimeError("Downloaded video empty hai.")
+            if size > USERBOT_LIMIT:
+                raise RuntimeError("Video 2 GB se badi hai; skip ki gayi.")
+            return os.path.basename(path), path, size
+    except Exception:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+
+
 def sync_youtube_links(bot, state, channel_id):
-    """Queue public watch links and post them a few at a time (oldest first);
-    never downloads media. Sources: /addplaylist, /addyoutube, and YouTube
-    videos found on added websites."""
+    """Download and upload queued public, non-DRM YouTube videos.
+    A queue item is marked seen only after Telegram confirms file upload."""
     sources = state.get("youtube_sources") or []
     state.setdefault("youtube_seen", {})
     state.setdefault("youtube_pending", {})
-    max_links = max(1, int(os.environ.get("MAX_YOUTUBE_LINKS_PER_RUN") or 5))
+    max_videos = max(1, int(os.environ.get("MAX_YOUTUBE_VIDEOS_PER_RUN") or 2))
     posted, failed = 0, 0
     target = os.environ.get("CHANNEL_ID_VIDEO") or channel_id
     queues = []
@@ -462,7 +517,6 @@ def sync_youtube_links(bot, state, channel_id):
         try:
             entries = youtube_tracker.fetch_entries(source)
             if source["kind"] == "channel" and not source.get("seeded") and not seen and not pending:
-                # first look at a channel: its old videos count as seen
                 for entry in entries[:-CHANNEL_FIRST_LINKS]:
                     seen.append(entry["id"])
             source["seeded"] = True
@@ -472,7 +526,6 @@ def sync_youtube_links(bot, state, channel_id):
                     pending.append(entry)
                     known.add(entry["id"])
         except Exception as e:
-            # not counted as a failed post (that would message the owner every run)
             _add_error_once(state, f"YouTube {source['url']}: {redact(e)}")
             log(f"YouTube tracker fetch failed: {redact(e)}")
         queues.append((key, source["url"]))
@@ -481,26 +534,49 @@ def sync_youtube_links(bot, state, channel_id):
         if state["youtube_pending"].get(key):
             state["youtube_seen"].setdefault(key, [])
             queues.append((key, site["url"]))
+
+    processed = 0
     for key, label in queues:
-        seen = state["youtube_seen"][key]
+        seen = state["youtube_seen"].setdefault(key, [])
         pending = state["youtube_pending"].get(key) or []
-        for entry in pending[:max_links]:
+        for entry in list(pending):
+            if processed >= max_videos:
+                break
+            video_id = entry.get("id") or ""
+            url = entry.get("url") or f"https://www.youtube.com/watch?v={video_id}"
             try:
-                title = (entry.get("title") or "YouTube video").replace("\n", " ")[:180]
-                bot.send_message(target, f"▶️ {title}\n{entry['url']}\nSource: {label}")
-                seen.append(entry["id"])
+                canonical_url, parsed_id = youtube_tracker.parse_video_url(url)
+                if parsed_id != video_id:
+                    raise RuntimeError("Video ID URL se match nahi karti.")
+                title, path, size = download_youtube_video(canonical_url)
+                try:
+                    caption = f"▶️ {(entry.get('title') or title).replace(chr(10), ' ')[:180]}\nSource: {label}\n{canonical_url}"
+                    if size <= BOT_UPLOAD_LIMIT:
+                        bot.send_file(target, path, title, caption, "video")
+                    elif userbot.available():
+                        userbot.send_big(target, path, caption, "video")
+                    else:
+                        raise RuntimeError(f"Video {human_size(size)} hai; Bot API limit 50 MB hai. Large upload ke liye userbot secrets configure karo.")
+                finally:
+                    if os.path.exists(path):
+                        os.remove(path)
+                    shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+                seen.append(video_id)
                 pending.remove(entry)
                 posted += 1
-                time.sleep(1.0)
+                processed += 1
+                log(f"YouTube video downloaded and uploaded: {video_id} ({human_size(size)})")
+                time.sleep(UPLOAD_GAP_SECONDS)
             except Exception as e:
                 failed += 1
-                st.add_error(state, f"YouTube post {entry.get('id')}: {redact(e)}", now_iso())
-                log(f"YouTube link post failed: {redact(e)}")
+                processed += 1
+                st.add_error(state, f"YouTube video {video_id}: {redact(e)}", now_iso())
+                log(f"YouTube video upload failed: {redact(e)}")
+                # Keep it queued for retry; do not send a link as a fake success.
                 break
         if key.startswith("site:") and not pending:
             state["youtube_pending"].pop(key, None)
     return posted, failed
-
 
 def cmd_get(bot, state, arg, default_channel):
     """/get <direct file URL>: download that one file and post it."""
