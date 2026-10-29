@@ -108,7 +108,7 @@ class UploadBot:
 
 
 def make_state(tmp_path):
-    return {"youtube_seen": {}, "youtube_pending": {}, "youtube_sources": [], "errors": []}
+    return {"youtube_seen": {}, "youtube_pending": {}, "youtube_skipped": {}, "youtube_sources": [], "errors": []}
 
 
 def test_telegram_upload_failure_keeps_video_file(monkeypatch, tmp_path):
@@ -155,13 +155,13 @@ def test_queue_retries_are_bounded_and_item_stays_until_limit(monkeypatch, tmp_p
             assert not state["youtube_pending"]["playlist:PL1234567890abcd"]
     m.sync_youtube_links(bot, state, "-100")
     assert len(state["errors"]) >= m.YTDLP_MAX_ATTEMPTS
+    assert state["youtube_skipped"]["playlist:PL1234567890abcd"] == ["abc123"]
     assert bot.uploads == []
 
 
 def test_downloads_are_serialized_inside_one_process(monkeypatch):
     monkeypatch.delenv("YTDLP_COOKIES_FILE", raising=False)
     fake_yt_dlp(monkeypatch)
-    monkeypatch.setattr(m.time, "sleep", lambda _: None)
     urls = [f"https://www.youtube.com/watch?v=video{i}" for i in range(4)]
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(m.download_youtube_video, urls))
