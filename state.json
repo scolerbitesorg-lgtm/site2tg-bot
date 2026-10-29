@@ -14,8 +14,8 @@
    "462fcec25aaff833504c"
   ]
  },
- "last_result": "0 bheji, 0 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-10-28T21:22:46Z",
+ "last_result": "5 bheji, 0 fail, 0 badi files ruki (files: 0, YouTube links: 5)",
+ "last_sync": "2026-10-29T01:04:55Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
@@ -31,6 +31,9 @@
    "tgvideo:3723101547:19",
    "tgvideo:3723101547:20"
   ]
+ },
+ "site_notes": {
+  "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0."
  },
  "sites": [
   {
@@ -55,7 +58,288 @@
   }
  ],
  "sync_requested": false,
- "youtube_pending": {},
- "youtube_seen": {},
+ "youtube_pending": {
+  "site:examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [
+   {
+    "id": "im2scj_Kxqc",
+    "title": "23 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=im2scj_Kxqc"
+   },
+   {
+    "id": "_5zQmUXEGH8",
+    "title": "22 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=_5zQmUXEGH8"
+   },
+   {
+    "id": "F3SQWzhTtAI",
+    "title": "21 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=F3SQWzhTtAI"
+   },
+   {
+    "id": "MKegz56mJDU",
+    "title": "20 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=MKegz56mJDU"
+   },
+   {
+    "id": "dNgZ4b5Dt-Q",
+    "title": "19 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=dNgZ4b5Dt-Q"
+   },
+   {
+    "id": "HqtVEHX2sX0",
+    "title": "18 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=HqtVEHX2sX0"
+   },
+   {
+    "id": "PsRDFqWqoss",
+    "title": "17 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=PsRDFqWqoss"
+   },
+   {
+    "id": "jr3XpefLwVk",
+    "title": "16 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=jr3XpefLwVk"
+   },
+   {
+    "id": "myDfCehXmyE",
+    "title": "15 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=myDfCehXmyE"
+   },
+   {
+    "id": "4aSdK3jzORg",
+    "title": "14 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=4aSdK3jzORg"
+   },
+   {
+    "id": "axxojYMNNZI",
+    "title": "13 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=axxojYMNNZI"
+   },
+   {
+    "id": "yAcNS0JFX8s",
+    "title": "12 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=yAcNS0JFX8s"
+   },
+   {
+    "id": "NTWZz2dZGPA",
+    "title": "11 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=NTWZz2dZGPA"
+   },
+   {
+    "id": "G41ojyyL7uY",
+    "title": "10 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=G41ojyyL7uY"
+   },
+   {
+    "id": "Mp17a5_OYhc",
+    "title": "09 October Current Affairs 2026 in Hindi & English | Daily GK Video Lecture",
+    "url": "https://www.youtube.com/watch?v=Mp17a5_OYhc"
+   },
+   {
+    "id": "q_fXzgdjXso",
+    "title": "08 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=q_fXzgdjXso"
+   },
+   {
+    "id": "ysuP3yjmMwI",
+    "title": "7 October Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=ysuP3yjmMwI"
+   },
+   {
+    "id": "4lL-rAoVcaQ",
+    "title": "06 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=4lL-rAoVcaQ"
+   },
+   {
+    "id": "4OuJZ2VpX3U",
+    "title": "03 October 2026 Current Affairs | Today GK in Hindi & English | Important Current Affairs",
+    "url": "https://www.youtube.com/watch?v=4OuJZ2VpX3U"
+   },
+   {
+    "id": "h4JsQF5i-qE",
+    "title": "02 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=h4JsQF5i-qE"
+   },
+   {
+    "id": "Q_zBXS5BKTw",
+    "title": "01 October Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=Q_zBXS5BKTw"
+   },
+   {
+    "id": "f6W46wZzVrA",
+    "title": "5 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=f6W46wZzVrA"
+   },
+   {
+    "id": "wI3vgUN7Dn8",
+    "title": "4 October Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=wI3vgUN7Dn8"
+   },
+   {
+    "id": "f7EBm8RJk5s",
+    "title": "30 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=f7EBm8RJk5s"
+   },
+   {
+    "id": "QsCilDqV4RI",
+    "title": "29 September Current Affairs 2026 | Daily Current Affairs Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=QsCilDqV4RI"
+   },
+   {
+    "id": "62ZAMBpWSaA",
+    "title": "28 September Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=62ZAMBpWSaA"
+   },
+   {
+    "id": "PvaZh1CGro0",
+    "title": "27 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=PvaZh1CGro0"
+   },
+   {
+    "id": "jUobvjryH-k",
+    "title": "26 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=jUobvjryH-k"
+   },
+   {
+    "id": "wFyw0t-nesE",
+    "title": "25 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=wFyw0t-nesE"
+   },
+   {
+    "id": "LKS7NEsxqso",
+    "title": "24 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=LKS7NEsxqso"
+   },
+   {
+    "id": "aN8tMCHOEwo",
+    "title": "23 September Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=aN8tMCHOEwo"
+   },
+   {
+    "id": "W5yGgeoG0Kk",
+    "title": "22 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=W5yGgeoG0Kk"
+   },
+   {
+    "id": "fSOq6quENv4",
+    "title": "21 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=fSOq6quENv4"
+   },
+   {
+    "id": "cgiZvdml46M",
+    "title": "20 September Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=cgiZvdml46M"
+   },
+   {
+    "id": "-FkN0ESOcOg",
+    "title": "19 September Current Affairs 2026 | Daily GK & Current Affairs Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=-FkN0ESOcOg"
+   },
+   {
+    "id": "Bd3cBRwdPGM",
+    "title": "18 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=Bd3cBRwdPGM"
+   },
+   {
+    "id": "zfpmd7b2EWA",
+    "title": "17 September Current Affairs 2026 | Daily Current Affairs in Hindi &amp; English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=zfpmd7b2EWA"
+   },
+   {
+    "id": "VdBKkTBs-0M",
+    "title": "16 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=VdBKkTBs-0M"
+   },
+   {
+    "id": "gjghnohyIDI",
+    "title": "15 September Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=gjghnohyIDI"
+   },
+   {
+    "id": "aKrogLr8544",
+    "title": "14 September Current Affairs 2026 | Daily GK in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=aKrogLr8544"
+   },
+   {
+    "id": "CdkT9FB2Icw",
+    "title": "13 September Current Affairs 2026 | Daily Current Affairs Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=CdkT9FB2Icw"
+   },
+   {
+    "id": "d36c_vhimO0",
+    "title": "12 September Current Affairs 2026 | Daily Current Affairs in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=d36c_vhimO0"
+   },
+   {
+    "id": "C-Xj7qq5Ghk",
+    "title": "11 September Current Affairs 2026 | Daily Current Affairs Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=C-Xj7qq5Ghk"
+   },
+   {
+    "id": "Ol7q7Pxn5MU",
+    "title": "10 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=Ol7q7Pxn5MU"
+   },
+   {
+    "id": "teyxZKDIMAM",
+    "title": "9 September Current Affairs 2026 | Daily GK Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=teyxZKDIMAM"
+   },
+   {
+    "id": "2uzqRUO0edU",
+    "title": "8 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=2uzqRUO0edU"
+   },
+   {
+    "id": "ruH_NqMtaOg",
+    "title": "7 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=ruH_NqMtaOg"
+   },
+   {
+    "id": "QUvPkztVkPY",
+    "title": "6 September Current Affairs 2026 | Daily GK Video Lecture in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=QUvPkztVkPY"
+   },
+   {
+    "id": "DOvB2WIp6kw",
+    "title": "5 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=DOvB2WIp6kw"
+   },
+   {
+    "id": "9-eJmvfqdkg",
+    "title": "4 September Current Affairs 2026 | Daily GK Quiz & Video Lecture in Hindi",
+    "url": "https://www.youtube.com/watch?v=9-eJmvfqdkg"
+   },
+   {
+    "id": "SUU4p5w2B-s",
+    "title": "3 September Current Affairs 2026 | Daily Current Affairs Quiz in Hindi & English",
+    "url": "https://www.youtube.com/watch?v=SUU4p5w2B-s"
+   },
+   {
+    "id": "5fzo9U7SoDk",
+    "title": "02 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=5fzo9U7SoDk"
+   },
+   {
+    "id": "_e_BKG7DC-Q",
+    "title": "1 September Current Affairs 2026 | Daily Current Affairs in Hindi & English | Video Lecture",
+    "url": "https://www.youtube.com/watch?v=_e_BKG7DC-Q"
+   },
+   {
+    "id": "0cEUWdfMu7E",
+    "title": "31 August Current Affairs 2026 | Daily Current Affairs Hindi & English Video Lecture",
+    "url": "https://www.youtube.com/watch?v=0cEUWdfMu7E"
+   }
+  ]
+ },
+ "youtube_seen": {
+  "site:examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [
+   "KR_gAamao2Y",
+   "pRibu216OC8",
+   "cmDJ6R72T1A",
+   "4JphMtX0nMc",
+   "2l54wXg0k5E"
+  ]
+ },
  "youtube_sources": []
 }
