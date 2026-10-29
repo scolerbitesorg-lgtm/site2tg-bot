@@ -4,9 +4,11 @@ run-name: ${{ inputs.command && format('cmd {0}', inputs.command) || 'site2tg-bo
 
 on:
   schedule:
-    # Every 10 minutes. GitHub may delay scheduled jobs during busy periods.
-    # Monitor Actions minutes: usage depends on how long each scan takes.
-    - cron: "*/10 * * * *"
+    # Every 30 minutes, at :17 and :47 (GitHub drops/delays more runs at the
+    # busy :00/:10 marks; on 2026-10-28 a */10 schedule ran only twice in 11 h).
+    # Public repo: Actions minutes are free. For a steadier clock, point a free
+    # pinger (cron-job.org) at the Vercel /api/tick URL (README).
+    - cron: "17,47 * * * *"
   workflow_dispatch:
     inputs:
       command:
