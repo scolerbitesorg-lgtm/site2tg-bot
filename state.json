@@ -40,6 +40,10 @@
   {
    "at": "2026-10-29T23:59:31Z",
    "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-10-30T05:51:48Z",
+   "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -58,8 +62,8 @@
    "ac64490c2201361ad04b"
   ]
  },
- "last_result": "0 bheji, 2 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-10-29T23:59:31Z",
+ "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
+ "last_sync": "2026-10-30T05:51:48Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
