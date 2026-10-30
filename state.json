@@ -44,6 +44,10 @@
   {
    "at": "2026-10-30T05:51:48Z",
    "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-10-30T06:21:31Z",
+   "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -63,11 +67,12 @@
   ]
  },
  "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-10-30T05:51:48Z",
+ "last_sync": "2026-10-30T06:21:31Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
   "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [],
+  "https://sachinacademy.netlify.app": [],
   "https://spidyiq.vercel.app/course/9854/English": [],
   "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA": [],
   "https://videoclasses.vercel.app/": [
@@ -84,6 +89,7 @@
   ]
  },
  "site_notes": {
+  "https://sachinacademy.netlify.app": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.",
   "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.",
   "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA": "2 page(s) dekhe, kisi pe seedha file link (.mp4/.pdf/.apk/.zip…) ya YouTube video nahi mila."
  },
@@ -114,6 +120,13 @@
    "depth": 5,
    "limit": 3,
    "url": "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA"
+  },
+  {
+   "adapter": "generic",
+   "added": "2026-10-30T06:20:21Z",
+   "depth": 5,
+   "limit": 3,
+   "url": "https://sachinacademy.netlify.app"
   }
  ],
  "sync_requested": false,
