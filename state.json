@@ -56,11 +56,19 @@
   {
    "at": "2026-10-30T12:58:43Z",
    "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-10-30T18:40:25Z",
+   "msg": "🎬 📹 Lecture 1_519_ Economics By Vinay Sir_ परिचय.mp4: The authorization key (session file) was used under two different IP addresses simultaneously, and can no longer be used. Use the same session exclusively, or use different sessions (caused by InvokeWithLayerRequest(InitConnectionRequest(GetConfigRequest)))"
+  },
+  {
+   "at": "2026-10-30T18:41:37Z",
+   "msg": "YouTube video Q_zBXS5BKTw: ERROR: [youtube] Q_zBXS5BKTw: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
   "tgvideo:3723101547:21": 3,
-  "tgvideo:3959559113:7": 1
+  "tgvideo:3959559113:7": 2
  },
  "files_sent_total": 21,
  "hashes": {
@@ -76,8 +84,8 @@
    "f8e4cf1d518d3e75cc71"
   ]
  },
- "last_result": "1 bheji, 2 fail, 0 badi files ruki (files: 1, YouTube links: 0)",
- "last_sync": "2026-10-30T12:58:43Z",
+ "last_result": "0 bheji, 2 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
+ "last_sync": "2026-10-30T18:41:37Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
