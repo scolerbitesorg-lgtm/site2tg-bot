@@ -2,10 +2,6 @@
  "big_pending": {},
  "errors": [
   {
-   "at": "2026-10-31T06:39:05Z",
-   "msg": "YouTube video b4G6B7Cs4lE: ERROR: [youtube] b4G6B7Cs4lE: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
-  },
-  {
    "at": "2026-10-31T08:27:29Z",
    "msg": "YouTube video b4G6B7Cs4lE: ERROR: [youtube] b4G6B7Cs4lE: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   },
@@ -80,6 +76,10 @@
   {
    "at": "2026-11-04T03:20:38Z",
    "msg": "YouTube video pzSb24VwLhE: ERROR: [youtube] pzSb24VwLhE: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-11-04T11:37:48Z",
+   "msg": "YouTube video oyEKGhE4wOg: ERROR: [youtube] oyEKGhE4wOg: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -101,7 +101,7 @@
   ]
  },
  "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-11-04T03:20:38Z",
+ "last_sync": "2026-11-04T11:37:48Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
@@ -176,6 +176,11 @@
  "sync_requested": false,
  "youtube_pending": {
   "site:examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": [
+   {
+    "id": "oyEKGhE4wOg",
+    "title": "4 November 2026 Current Affairs in Hindi & English | Daily GK Video Lecture\\",
+    "url": "https://www.youtube.com/watch?v=oyEKGhE4wOg"
+   },
    {
     "id": "pzSb24VwLhE",
     "title": "3 November Current Affairs 2026 in Hindi & English | Daily GK Video Lecture\\",
