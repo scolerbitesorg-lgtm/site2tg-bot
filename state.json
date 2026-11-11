@@ -2,14 +2,6 @@
  "big_pending": {},
  "errors": [
   {
-   "at": "2026-11-06T09:56:27Z",
-   "msg": "YouTube video JeX-UAw03k8: ERROR: [youtube] JeX-UAw03k8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
-  },
-  {
-   "at": "2026-11-06T17:33:51Z",
-   "msg": "YouTube video JeX-UAw03k8: ERROR: [youtube] JeX-UAw03k8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
-  },
-  {
    "at": "2026-11-06T22:25:30Z",
    "msg": "YouTube video JeX-UAw03k8: ERROR: [youtube] JeX-UAw03k8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   },
@@ -80,6 +72,14 @@
   {
    "at": "2026-11-11T03:05:00Z",
    "msg": "YouTube video ZLcrWnRaePU: ERROR: [youtube] ZLcrWnRaePU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-11-11T10:58:40Z",
+   "msg": "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams: list failed: HTTPSConnectionPool(host='examhint.com', port=443): Max retries exceeded with url: /p/7/video-lectures-In-Hindi-for-competitive-exams (Caused by ConnectTimeoutError(<HTTPSConnection(host='examhint.com', port=443) at 0x7e9eba5e74d0>, 'Connection to examhint.com timed out. (connect timeout=30)'))"
+  },
+  {
+   "at": "2026-11-11T10:58:48Z",
+   "msg": "YouTube video ZLcrWnRaePU: ERROR: [youtube] ZLcrWnRaePU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -100,8 +100,8 @@
    "f8e4cf1d518d3e75cc71"
   ]
  },
- "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-11-11T03:05:00Z",
+ "last_result": "0 bheji, 2 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
+ "last_sync": "2026-11-11T10:58:48Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
@@ -125,6 +125,7 @@
   ]
  },
  "site_notes": {
+  "https://examhint.com/p/7/video-lectures-In-Hindi-for-competitive-exams": "site khul nahi rahi (HTTPSConnectionPool(host='examhint.com', port=443): Max retries exceeded with url: /p/7/video-lectures-In-Hindi-for-comp)",
   "https://sachinacademy.netlify.app": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.",
   "https://spidyiq.vercel.app/course/9854/English": "ye site JavaScript app hai: videos/PDF ki list page khulne ke baad JS se aati hai, HTML mein koi link nahi hota. Bot sirf seedhe HTML links padhta hai, isliye 0.",
   "https://studybeepro.site/rwax/content.html?courseid=757&subjectid=3532&topicid=11209&domainId=RWA": "2 page(s) dekhe, kisi pe seedha file link (.mp4/.pdf/.apk/.zip…) ya YouTube video nahi mila.",
