@@ -2,10 +2,6 @@
  "big_pending": {},
  "errors": [
   {
-   "at": "2026-11-07T09:18:08Z",
-   "msg": "YouTube video JeX-UAw03k8: ERROR: [youtube] JeX-UAw03k8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
-  },
-  {
    "at": "2026-11-07T15:45:56Z",
    "msg": "YouTube video JeX-UAw03k8: ERROR: [youtube] JeX-UAw03k8: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   },
@@ -80,6 +76,10 @@
   {
    "at": "2026-11-12T01:02:06Z",
    "msg": "YouTube video ZLcrWnRaePU: ERROR: [youtube] ZLcrWnRaePU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-11-12T08:21:42Z",
+   "msg": "YouTube video ZLcrWnRaePU: ERROR: [youtube] ZLcrWnRaePU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -101,7 +101,7 @@
   ]
  },
  "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-11-12T01:02:06Z",
+ "last_sync": "2026-11-12T08:21:42Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
