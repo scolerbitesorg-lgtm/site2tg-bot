@@ -2,10 +2,6 @@
  "big_pending": {},
  "errors": [
   {
-   "at": "2026-11-10T23:23:56Z",
-   "msg": "YouTube video S1gUlAnyTSY: ERROR: [youtube] S1gUlAnyTSY: Requested format is not available. Use --list-formats for a list of available formats"
-  },
-  {
    "at": "2026-11-11T03:05:00Z",
    "msg": "YouTube video ZLcrWnRaePU: ERROR: [youtube] ZLcrWnRaePU: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   },
@@ -80,6 +76,10 @@
   {
    "at": "2026-11-15T09:57:42Z",
    "msg": "YouTube video s-EaQQ_HJRM: ERROR: [youtube] s-EaQQ_HJRM: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+  },
+  {
+   "at": "2026-11-15T17:13:05Z",
+   "msg": "YouTube video s-EaQQ_HJRM: ERROR: [youtube] s-EaQQ_HJRM: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
   }
  ],
  "fails": {
@@ -101,7 +101,7 @@
   ]
  },
  "last_result": "0 bheji, 1 fail, 0 badi files ruki (files: 0, YouTube links: 0)",
- "last_sync": "2026-11-15T09:57:42Z",
+ "last_sync": "2026-11-15T17:13:05Z",
  "offset": 959581388,
  "routing": "videos → main channel, baaki files → main channel",
  "sent": {
